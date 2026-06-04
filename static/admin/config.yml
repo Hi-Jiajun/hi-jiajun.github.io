@@ -10,72 +10,135 @@ publish_mode: editorial_workflow
 media_folder: "static/images/uploads"
 public_folder: "/images/uploads"
 
+# 中文界面配置
+i18n:
+  zh-CN:
+    # 通用
+    app_header: "博客管理"
+    app_header_loading: "加载中..."
+    app_sidebar_header: "内容管理"
+    app_sidebar_content: "内容"
+    app_sidebar_media: "媒体"
+    app_sidebar_config: "配置"
+
+    # 登录
+    login_title: "登录"
+    login_subtitle: "使用 GitHub 账号登录"
+    login_button: "登录"
+    login_loading: "登录中..."
+
+    # 内容列表
+    collection_sidebar_heading: "内容集合"
+    collection_search: "搜索内容"
+    collection_new: "新建"
+    collection_empty: "暂无内容"
+    collection_item_draft: "草稿"
+    collection_item_published: "已发布"
+
+    # 编辑器
+    editor_header_new: "新建 {{collection}}"
+    editor_header_edit: "编辑 {{collection}}"
+    editor_save: "保存"
+    editor_publish: "发布"
+    editor_publishing: "发布中..."
+    editor_published: "已发布"
+    editor_draft: "保存为草稿"
+    editor_delete: "删除"
+    editor_delete_confirm: "确定要删除吗？"
+    editor_back: "返回"
+    editor_preview: "预览"
+    editor_editor: "编辑"
+
+    # 字段
+    field_required: "必填"
+    field_validation_error: "验证错误"
+
+    # 媒体
+    media_header: "媒体库"
+    media_upload: "上传"
+    media_uploading: "上传中..."
+    media_empty: "暂无媒体文件"
+    media_delete: "删除"
+    media_delete_confirm: "确定要删除这个文件吗？"
+
+    # 配置
+    config_header: "博客配置"
+    config_save: "保存配置"
+
+    # 提示
+    toast_save_success: "保存成功"
+    toast_save_error: "保存失败"
+    toast_publish_success: "发布成功"
+    toast_publish_error: "发布失败"
+    toast_delete_success: "删除成功"
+    toast_delete_error: "删除失败"
+
 collections:
   - name: "posts"
-    label: "文章"
+    label: "📝 文章"
     folder: "content/posts"
     create: true
     slug: "{{year}}-{{month}}-{{day}}-{{slug}}"
     path: "{{slug}}"
     preview_path: "posts/{{slug}}"
     fields:
-      - { label: "标题", name: "title", widget: "string" }
-      - { label: "发布日期", name: "date", widget: "datetime" }
-      - { label: "草稿", name: "draft", widget: "boolean", default: false }
-      - { label: "标签", name: "tags", widget: "list", allow_add: true }
-      - { label: "分类", name: "categories", widget: "list", allow_add: true }
-      - { label: "摘要", name: "summary", widget: "text", required: false }
-      - { label: "正文", name: "body", widget: "markdown" }
-      - label: "评论"
+      - { label: "📌 标题", name: "title", widget: "string" }
+      - { label: "📅 发布日期", name: "date", widget: "datetime" }
+      - { label: "📝 草稿", name: "draft", widget: "boolean", default: false }
+      - { label: "🏷️ 标签", name: "tags", widget: "list", allow_add: true }
+      - { label: "📂 分类", name: "categories", widget: "list", allow_add: true }
+      - { label: "📋 摘要", name: "summary", widget: "text", required: false }
+      - { label: "📄 正文", name: "body", widget: "markdown" }
+      - label: "💬 评论"
         name: "comments"
         widget: "boolean"
         default: true
-      - label: "目录"
+      - label: "📑 目录"
         name: "showToc"
         widget: "boolean"
         default: true
 
   - name: "pages"
-    label: "页面"
+    label: "📄 页面"
     files:
       - name: "about"
-        label: "关于我"
+        label: "👤 关于我"
         file: "content/about.md"
         fields:
-          - { label: "标题", name: "title", widget: "string" }
-          - { label: "正文", name: "body", widget: "markdown" }
+          - { label: "📌 标题", name: "title", widget: "string" }
+          - { label: "📄 正文", name: "body", widget: "markdown" }
       - name: "archives"
-        label: "归档"
+        label: "📚 归档"
         file: "content/archives.md"
         fields:
-          - { label: "标题", name: "title", widget: "string" }
+          - { label: "📌 标题", name: "title", widget: "string" }
       - name: "search"
-        label: "搜索"
+        label: "🔍 搜索"
         file: "content/search.md"
         fields:
-          - { label: "标题", name: "title", widget: "string" }
+          - { label: "📌 标题", name: "title", widget: "string" }
 
   - name: "config"
-    label: "博客配置"
+    label: "⚙️ 博客配置"
     files:
       - name: "hugo"
-        label: "Hugo 配置"
+        label: "🏠 Hugo 配置"
         file: "hugo.yaml"
         fields:
-          - { label: "博客标题", name: "title", widget: "string" }
-          - label: "首页信息"
+          - { label: "📌 博客标题", name: "title", widget: "string" }
+          - label: "🏠 首页信息"
             name: "params"
             widget: "object"
             fields:
-              - label: "欢迎信息"
+              - label: "👋 欢迎信息"
                 name: "homeInfoParams"
                 widget: "object"
                 fields:
-                  - { label: "标题", name: "Title", widget: "string" }
-                  - { label: "内容", name: "Content", widget: "markdown" }
-              - label: "社交链接"
+                  - { label: "📌 标题", name: "Title", widget: "string" }
+                  - { label: "📄 内容", name: "Content", widget: "markdown" }
+              - label: "🔗 社交链接"
                 name: "socialIcons"
                 widget: "list"
                 fields:
-                  - { label: "名称", name: "name", widget: "string" }
-                  - { label: "链接", name: "url", widget: "string" }
+                  - { label: "📛 名称", name: "name", widget: "string" }
+                  - { label: "🔗 链接", name: "url", widget: "string" }
