@@ -1,0 +1,82 @@
+backend:
+  name: github
+  repo: Hi-Jiajun/hi-jiajun.github.io
+  branch: main
+  base_url: https://hi-jiajun.github.io
+  auth_type: pkce
+  app_id: "your_github_oauth_app_id"
+
+publish_mode: editorial_workflow
+
+media_folder: "static/images/uploads"
+public_folder: "/images/uploads"
+
+collections:
+  - name: "posts"
+    label: "文章"
+    folder: "content/posts"
+    create: true
+    slug: "{{year}}-{{month}}-{{day}}-{{slug}}"
+    path: "{{slug}}"
+    preview_path: "posts/{{slug}}"
+    fields:
+      - { label: "标题", name: "title", widget: "string" }
+      - { label: "发布日期", name: "date", widget: "datetime" }
+      - { label: "草稿", name: "draft", widget: "boolean", default: false }
+      - { label: "标签", name: "tags", widget: "list", allow_add: true }
+      - { label: "分类", name: "categories", widget: "list", allow_add: true }
+      - { label: "摘要", name: "summary", widget: "text", required: false }
+      - { label: "正文", name: "body", widget: "markdown" }
+      - label: "评论"
+        name: "comments"
+        widget: "boolean"
+        default: true
+      - label: "目录"
+        name: "showToc"
+        widget: "boolean"
+        default: true
+
+  - name: "pages"
+    label: "页面"
+    files:
+      - name: "about"
+        label: "关于我"
+        file: "content/about.md"
+        fields:
+          - { label: "标题", name: "title", widget: "string" }
+          - { label: "正文", name: "body", widget: "markdown" }
+      - name: "archives"
+        label: "归档"
+        file: "content/archives.md"
+        fields:
+          - { label: "标题", name: "title", widget: "string" }
+      - name: "search"
+        label: "搜索"
+        file: "content/search.md"
+        fields:
+          - { label: "标题", name: "title", widget: "string" }
+
+  - name: "config"
+    label: "博客配置"
+    files:
+      - name: "hugo"
+        label: "Hugo 配置"
+        file: "hugo.yaml"
+        fields:
+          - { label: "博客标题", name: "title", widget: "string" }
+          - label: "首页信息"
+            name: "params"
+            widget: "object"
+            fields:
+              - label: "欢迎信息"
+                name: "homeInfoParams"
+                widget: "object"
+                fields:
+                  - { label: "标题", name: "Title", widget: "string" }
+                  - { label: "内容", name: "Content", widget: "markdown" }
+              - label: "社交链接"
+                name: "socialIcons"
+                widget: "list"
+                fields:
+                  - { label: "名称", name: "name", widget: "string" }
+                  - { label: "链接", name: "url", widget: "string" }
