@@ -5,35 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="robots" content="noindex" />
   <title>博客管理 - Content Manager</title>
-  <style>
-    body {
-      margin: 0;
-      padding: 0;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-    }
-    #nc-root {
-      height: 100vh;
-    }
-  </style>
 </head>
 <body>
-  <!-- Decap CMS -->
-  <script src="https://unpkg.com/decap-cms@^3.0.0/dist/decap-cms.js"></script>
-
-  <!-- Hugo specific configuration -->
-  <script>
-    // Register Hugo templates for preview
-    CMS.registerPreviewStyle('/css/style.css');
-
-    // Custom preview templates
-    CMS.registerPreviewTemplate('posts', ({ entry, widgetFor }) => {
-      const data = entry.get('data');
-      return h('div', {},
-        h('h1', {}, data.get('title')),
-        h('p', { style: { color: '#666' } }, data.get('summary')),
-        h('div', { dangerouslySetInnerHTML: { __html: widgetFor('body') } })
-      );
-    });
-  </script>
+  <!-- Sveltia CMS - Decap CMS 的现代替代品 -->
+  <script src="https://unpkg.com/@sveltia/cms/dist/sveltia-cms.js"></script>
 </body>
 </html>
