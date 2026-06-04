@@ -2,8 +2,9 @@ backend:
   name: github
   repo: Hi-Jiajun/hi-jiajun.github.io
   branch: main
-  base_url: https://decap-oauth.netlify.app
+  base_url: https://hi-jiajun-github-io.netlify.app
   auth_type: pkce
+  app_id: "Ov23liy6fMqKtJtausJI"
 
 publish_mode: editorial_workflow
 
