@@ -16,7 +16,8 @@ languages:
     languageName: "中文"
     weight: 1
     title: "我的博客"
-    description: "个人技术博客"
+    params:
+      description: "个人技术博客"
 
 # 日期格式
 enableEmoji: true
