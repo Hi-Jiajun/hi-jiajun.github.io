@@ -3,7 +3,8 @@ languageCode: "zh-cn"
 defaultContentLanguage: "zh"
 title: "我的博客"
 theme: "PaperMod"
-paginate: 5
+pagination:
+  pagerSize: 5
 
 enableRobotsTXT: true
 buildDrafts: false
