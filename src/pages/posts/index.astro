@@ -21,27 +21,62 @@ const years = Array.from(grouped.entries()).sort((a, b) => b[0] - a[0]);
     <p class="hero-kicker">ARCHIVE · {posts.length} POSTS</p>
     <h1>文章归档</h1>
     {tags.length > 0 && (
-      <div class="tag-row">
-        {tags.slice(0, 12).map(({ tag, count }) => (
-          <a class="tag-pill" href={`/tags/${encodeURIComponent(tag)}/`}>
-            #{tag} <span style="opacity:0.7">({count})</span>
-          </a>
+      <div id="archive-tag-filters" class="tag-row" style="margin-top:0.85rem;">
+        <button type="button" class="tag-pill active" data-tag="all">全部 ({posts.length})</button>
+        {tags.map(({ tag, count }) => (
+          <button type="button" class="tag-pill" data-tag={tag}>
+            #{tag} ({count})
+          </button>
         ))}
       </div>
     )}
   </div>
 
-  {years.map(([year, yearPosts]) => (
-    <section>
-      <div class="section-head">
-        <h2>{year}</h2>
-        <span class="more-link">{yearPosts.length} 篇</span>
-      </div>
-      <div class="post-list">
-        {yearPosts.map((post) => (
-          <PostCard post={post} />
-        ))}
-      </div>
-    </section>
-  ))}
+  <div id="archive-years">
+    {years.map(([year, yearPosts]) => (
+      <section class="archive-year-group">
+        <div class="section-head">
+          <h2>{year}</h2>
+          <span class="more-link year-count">{yearPosts.length} 篇</span>
+        </div>
+        <div class="timeline-list">
+          {yearPosts.map((post) => (
+            <PostCard post={post} />
+          ))}
+        </div>
+      </section>
+    ))}
+  </div>
+
+  <script is:inline>
+    (() => {
+      const filterWrap = document.getElementById('archive-tag-filters');
+      const yearGroups = document.querySelectorAll('.archive-year-group');
+      if (!filterWrap) return;
+
+      filterWrap.addEventListener('click', (e) => {
+        const btn = e.target instanceof Element ? e.target.closest('button[data-tag]') : null;
+        if (!btn) return;
+        const selected = btn.getAttribute('data-tag') || 'all';
+
+        filterWrap.querySelectorAll('button[data-tag]').forEach((b) => {
+          b.classList.toggle('active', b === btn);
+        });
+
+        yearGroups.forEach((group) => {
+          const rows = group.querySelectorAll('.timeline-row');
+          let visibleCount = 0;
+          rows.forEach((row) => {
+            const tags = (row.getAttribute('data-tags') || '').split(',').filter(Boolean);
+            const show = selected === 'all' || tags.includes(selected);
+            row.style.display = show ? '' : 'none';
+            if (show) visibleCount += 1;
+          });
+          group.style.display = visibleCount > 0 ? '' : 'none';
+          const countEl = group.querySelector('.year-count');
+          if (countEl) countEl.textContent = `${visibleCount} 篇`;
+        });
+      });
+    })();
+  </script>
 </BaseLayout>

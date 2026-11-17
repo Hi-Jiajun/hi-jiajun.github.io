@@ -1,7 +1,7 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import PostCard from '../components/PostCard.astro';
-import { PROJECTS, SITE } from '../config';
+import { PROJECT_CATEGORIES, PROJECTS, SITE } from '../config';
 import { getPublishedPosts } from '../utils/posts';
 
 const posts = await getPublishedPosts();
@@ -10,27 +10,57 @@ const featuredProjects = PROJECTS.filter((p) => p.featured);
 ---
 
 <BaseLayout title={SITE.title} description={SITE.description}>
-  <section class="hero">
-    <p class="hero-kicker">HI-JIAJUN · KILIMINAL / PUBLIC WORKBENCH</p>
-    <h1>{SITE.titleZh}</h1>
-    <p>
-      记录用户态网络数据面（VPP）、macOS 与 Linux 内核驱动移植、小米 15S Pro（XRING O1）设备树与无线实验、
-      以及 Metal-on-Vulkan / AI 自动化工具链的真实进展与边界。
-    </p>
-    <div class="hero-actions">
-      <a class="pill-btn primary" href="/posts/">阅读全部文章 ({posts.length})</a>
-      <a class="pill-btn" href="/projects/">项目索引</a>
-      <a class="pill-btn" href="/search/">全文搜索</a>
-      <a class="pill-btn" href={SITE.github} target="_blank" rel="noopener noreferrer">GitHub 主页</a>
+  <section class="workbench-hero">
+    <div>
+      <div class="identity-row">
+        <img class="avatar-img" src={SITE.avatar} alt={SITE.author} width="60" height="60" />
+        <div>
+          <p class="hero-kicker">PUBLIC WORKBENCH · {SITE.location}</p>
+          <h1>
+            {SITE.titleShort}<span class="handle-tag">/{SITE.handle}</span>
+          </h1>
+        </div>
+      </div>
+
+      <p class="hero-bio">
+        记录用户态网络数据面（FD.io VPP）、macOS 与 Android 内核驱动移植、小米 15S Pro (XRING O1) 设备树与无线实验，以及 Metal-on-Vulkan / AI 工程工具链的真实进展与边界。
+      </p>
+
+      <div class="hero-actions">
+        <a class="pill-btn primary" href="/posts/">文章归档 ({posts.length})</a>
+        <a class="pill-btn" href="/projects/">项目矩阵 ({PROJECTS.length})</a>
+        <a class="pill-btn" href={SITE.github} target="_blank" rel="noopener noreferrer">GitHub</a>
+        <a class="pill-btn" href={SITE.bilibili} target="_blank" rel="noopener noreferrer">Bilibili</a>
+      </div>
     </div>
+
+    <aside class="domain-matrix" aria-label="研究与工程领域">
+      <div class="matrix-head">ENGINEERING DOMAINS</div>
+      <div class="matrix-row">
+        <span class="matrix-left"><span class="matrix-dot" style="background:#38bdf8;"></span>01 Dataplane</span>
+        <span class="matrix-sub">VPP PPPoE · VectorOS</span>
+      </div>
+      <div class="matrix-row">
+        <span class="matrix-left"><span class="matrix-dot" style="background:#818cf8;"></span>02 Kernel &amp; IOKit</span>
+        <span class="matrix-sub">MT792x · mlx4 · Zen 5</span>
+      </div>
+      <div class="matrix-row">
+        <span class="matrix-left"><span class="matrix-dot" style="background:#2dd4bf;"></span>03 Mobile SoC</span>
+        <span class="matrix-sub">XRING O1 · 6.18 KMI</span>
+      </div>
+      <div class="matrix-row">
+        <span class="matrix-left"><span class="matrix-dot" style="background:#f59e0b;"></span>04 GPU &amp; Agent</span>
+        <span class="matrix-sub">Metal-on-Vulkan · MCP</span>
+      </div>
+    </aside>
   </section>
 
   <section>
     <div class="section-head">
       <h2>最新文章</h2>
-      <a class="more-link" href="/posts/">全部文章 →</a>
+      <a class="more-link" href="/posts/">全部 {posts.length} 篇 →</a>
     </div>
-    <div class="post-list">
+    <div class="timeline-list">
       {recentPosts.map((post) => (
         <PostCard post={post} />
       ))}
@@ -40,20 +70,26 @@ const featuredProjects = PROJECTS.filter((p) => p.featured);
   <section>
     <div class="section-head">
       <h2>代表项目</h2>
-      <a class="more-link" href="/projects/">查看全部 {PROJECTS.length} 个项目 →</a>
+      <a class="more-link" href="/projects/">全部 {PROJECTS.length} 个项目 →</a>
     </div>
     <div class="grid-2">
-      {featuredProjects.map((project) => (
-        <article class="card">
-          <div class="project-card-top">
-            <a class="project-title" href={project.repo} target="_blank" rel="noopener noreferrer">
-              {project.name}
-            </a>
-            <span class="badge">{project.language}</span>
-          </div>
-          <p>{project.summary}</p>
-        </article>
-      ))}
+      {featuredProjects.map((project) => {
+        const cat = PROJECT_CATEGORIES[project.category];
+        return (
+          <article class="card" style={`--card-accent: ${cat.domainColor};`}>
+            <div class="project-card-top">
+              <a class="project-title" href={project.repo} target="_blank" rel="noopener noreferrer">
+                {project.name}
+              </a>
+              <div style="display:flex; gap:0.35rem; align-items:center;">
+                <span class="badge badge-soft">{project.status}</span>
+                <span class="badge">{project.language}</span>
+              </div>
+            </div>
+            <p>{project.summary}</p>
+          </article>
+        );
+      })}
     </div>
   </section>
 </BaseLayout>

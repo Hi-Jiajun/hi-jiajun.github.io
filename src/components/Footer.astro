@@ -5,11 +5,13 @@ const year = new Date().getFullYear();
 
 <footer class="site-footer">
   <div class="container footer-inner">
-    <span>© {year} {SITE.author} · 先做对自己有用的东西</span>
+    <span>© {year} {SITE.author} · Built with Astro · 先做对自己有用的东西</span>
     <div class="footer-links">
+      <a href="/search/">全文搜索</a>
       <a href="/rss.xml">RSS</a>
       <a href="/sitemap-index.xml">Sitemap</a>
       <a href={SITE.github} target="_blank" rel="noopener noreferrer">GitHub</a>
+      <a href={SITE.bilibili} target="_blank" rel="noopener noreferrer">Bilibili</a>
       <a href={`mailto:${SITE.email}`}>Email</a>
     </div>
   </div>

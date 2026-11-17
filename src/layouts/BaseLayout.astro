@@ -1,6 +1,7 @@
 ---
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
+import CommandPalette from '../components/CommandPalette.astro';
 import { SITE } from '../config';
 import '../styles/global.css';
 
@@ -8,12 +9,14 @@ interface Props {
   title?: string;
   description?: string;
   canonicalPath?: string;
+  wide?: boolean;
 }
 
 const {
   title = SITE.title,
   description = SITE.description,
   canonicalPath = Astro.url.pathname,
+  wide = false,
 } = Astro.props;
 
 const pageTitle = title === SITE.title ? title : `${title} · ${SITE.titleShort}`;
@@ -46,10 +49,11 @@ const canonicalUrl = new URL(canonicalPath, SITE.url).toString();
   </head>
   <body>
     <Header />
-    <main class="container">
+    <main class:list={['container', { 'container-wide': wide }]}>
       <slot />
     </main>
     <Footer />
+    <CommandPalette />
     <script is:inline>
       (() => {
         const btn = document.getElementById('theme-toggle');
@@ -61,19 +65,6 @@ const canonicalUrl = new URL(canonicalPath, SITE.url).toString();
             localStorage.setItem('theme', next);
           });
         }
-
-        document.addEventListener('keydown', (e) => {
-          const target = e.target;
-          const isInput =
-            target instanceof HTMLElement &&
-            (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable);
-          if (e.key === '/' && !isInput && !e.metaKey && !e.ctrlKey && !e.altKey) {
-            if (!window.location.pathname.startsWith('/search')) {
-              e.preventDefault();
-              window.location.href = '/search/';
-            }
-          }
-        });
       })();
     </script>
   </body>

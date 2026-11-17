@@ -8,6 +8,9 @@ draft: false
 
 最近把几条一直并行推进的底层实验分别整理成了独立仓库，也顺便在这里立一份清晰的状态清单：**哪些在真机上测通了，哪些只验证到某一步，哪些代码写完了还没加载**——尽量不写含糊的"基本可用"。
 
+> [!NOTE]
+> 所有项目状态均对应公开仓库中的实测记录与已知限制，未在硬件上加载验收的模块都会明确标出。
+
 ## 1. 用户态网络数据面：`vpp-pppoeclient`
 
 [`vpp-pppoeclient`](https://github.com/Hi-Jiajun/vpp-pppoeclient) 是为 FD.io VPP 编写的用户态 PPPoE 客户端插件，把 PPPoE 发现阶段、PPPoX 控制面、PAP / CHAP-MD5（最长支持 255 字节凭据）、IPCP / IPv6CP 协商、DHCPv6-PD、VLAN / QinQ 子接口以及 TCP MSS clamping 收拢进单个 `pppoeclient_plugin.so` 插件里，避免传统 `pppd` 加内核隧道的上下文切换开销。

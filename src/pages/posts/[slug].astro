@@ -40,7 +40,9 @@ const sourcePath = post.filePath
 const editUrl = `${SITE.repo}/blob/main/${sourcePath}`;
 ---
 
-<BaseLayout title={post.data.title} description={description}>
+<BaseLayout title={post.data.title} description={description} wide={true}>
+  <div id="reading-progress" class="reading-progress" aria-hidden="true"></div>
+
   <article>
     <header class="article-header">
       <div class="post-meta">
@@ -67,7 +69,7 @@ const editUrl = `${SITE.repo}/blob/main/${sourcePath}`;
     </header>
 
     {tocHeadings.length >= 2 && (
-      <details class="toc-box" open>
+      <details class="toc-mobile">
         <summary>目录（{tocHeadings.length} 节）</summary>
         <ul class="toc-list">
           {tocHeadings.map((heading) => (
@@ -79,45 +81,70 @@ const editUrl = `${SITE.repo}/blob/main/${sourcePath}`;
       </details>
     )}
 
-    <div class="prose">
-      <Content />
-    </div>
-
-    <div style="margin-top: 2rem; font-size: 0.9rem; color: var(--muted);">
-      <a href={editUrl} target="_blank" rel="noopener noreferrer">在 GitHub 上查看 / 编辑原文 →</a>
-    </div>
-
-    {(prevPost || nextPost) && (
-      <nav class="post-footer-nav" aria-label="文章导航">
-        <div>
-          {prevPost && (
-            <a class="pager-card" href={`/posts/${getPostSlug(prevPost)}/`}>
-              <span class="pager-label">← 上一篇</span>
-              <span class="pager-title">{prevPost.data.title}</span>
-            </a>
-          )}
+    <div class="article-shell">
+      <div class="article-main">
+        <div class="prose">
+          <Content />
         </div>
-        <div>
-          {nextPost && (
-            <a class="pager-card" href={`/posts/${getPostSlug(nextPost)}/`}>
-              <span class="pager-label">下一篇 →</span>
-              <span class="pager-title">{nextPost.data.title}</span>
-            </a>
-          )}
+
+        <div style="margin-top: 2.25rem; font-size: 0.88rem; color: var(--muted);">
+          <a href={editUrl} target="_blank" rel="noopener noreferrer">在 GitHub 上查看 / 编辑原文 →</a>
         </div>
-      </nav>
-    )}
+
+        {(prevPost || nextPost) && (
+          <nav class="post-footer-nav" aria-label="文章导航">
+            <div>
+              {prevPost && (
+                <a class="pager-card" href={`/posts/${getPostSlug(prevPost)}/`}>
+                  <span class="pager-label">← 上一篇</span>
+                  <span class="pager-title">{prevPost.data.title}</span>
+                </a>
+              )}
+            </div>
+            <div>
+              {nextPost && (
+                <a class="pager-card" href={`/posts/${getPostSlug(nextPost)}/`}>
+                  <span class="pager-label">下一篇 →</span>
+                  <span class="pager-title">{nextPost.data.title}</span>
+                </a>
+              )}
+            </div>
+          </nav>
+        )}
+      </div>
+
+      {tocHeadings.length >= 2 && (
+        <aside class="toc-rail" aria-label="文章目录">
+          <p class="toc-rail-title">ON THIS PAGE</p>
+          <ul class="toc-list">
+            {tocHeadings.map((heading) => (
+              <li class={`depth-${heading.depth}`}>
+                <a href={`#${heading.slug}`} data-toc-link={heading.slug}>{heading.text}</a>
+              </li>
+            ))}
+          </ul>
+        </aside>
+      )}
+    </div>
   </article>
 
   <script is:inline>
     (() => {
+      // 1. IDE-style code block frame with language label + Copy button
       const blocks = document.querySelectorAll('.prose pre.astro-code');
       for (const pre of blocks) {
-        if (pre.parentElement?.classList.contains('code-block-wrap')) continue;
-        const wrap = document.createElement('div');
-        wrap.className = 'code-block-wrap';
-        pre.parentNode?.insertBefore(wrap, pre);
-        wrap.appendChild(pre);
+        if (pre.closest('.code-frame')) continue;
+        const lang = (pre.getAttribute('data-language') || 'text').toUpperCase();
+
+        const frame = document.createElement('div');
+        frame.className = 'code-frame';
+
+        const bar = document.createElement('div');
+        bar.className = 'code-frame-bar';
+
+        const langSpan = document.createElement('span');
+        langSpan.className = 'code-lang';
+        langSpan.textContent = lang;
 
         const btn = document.createElement('button');
         btn.type = 'button';
@@ -127,7 +154,7 @@ const editUrl = `${SITE.repo}/blob/main/${sourcePath}`;
           const text = pre.innerText || pre.textContent || '';
           try {
             await navigator.clipboard.writeText(text);
-            btn.textContent = '已复制';
+            btn.textContent = '✓ 已复制';
           } catch {
             btn.textContent = '复制失败';
           }
@@ -135,8 +162,101 @@ const editUrl = `${SITE.repo}/blob/main/${sourcePath}`;
             btn.textContent = '复制';
           }, 1800);
         });
-        wrap.appendChild(btn);
+
+        bar.appendChild(langSpan);
+        bar.appendChild(btn);
+        pre.parentNode?.insertBefore(frame, pre);
+        frame.appendChild(bar);
+        frame.appendChild(pre);
       }
+
+      // 2. Transform GitHub-style Callouts: > [!NOTE] ...
+      const calloutLabels = {
+        note: 'Note',
+        tip: 'Tip',
+        important: 'Important',
+        warning: 'Warning',
+        caution: 'Caution',
+      };
+      document.querySelectorAll('.prose blockquote').forEach((bq) => {
+        const firstP = bq.querySelector('p:first-child');
+        if (!firstP) return;
+        const text = firstP.textContent || '';
+        const match = text.match(/^\s*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]\s*/i);
+        if (!match) return;
+        const kind = match[1].toLowerCase();
+        firstP.innerHTML = firstP.innerHTML.replace(/^\s*\[!(?:NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]\s*(?:<br\s*\/?>)?/i, '');
+        if (!firstP.textContent.trim()) firstP.remove();
+
+        const callout = document.createElement('div');
+        callout.className = `callout callout-${kind}`;
+
+        const title = document.createElement('div');
+        title.className = 'callout-title';
+        title.textContent = calloutLabels[kind] || kind;
+
+        callout.appendChild(title);
+        while (bq.firstChild) {
+          callout.appendChild(bq.firstChild);
+        }
+        bq.replaceWith(callout);
+      });
+
+      // 3. Reading progress bar
+      const progressBar = document.getElementById('reading-progress');
+      const updateProgress = () => {
+        if (!progressBar) return;
+        const scrollTop = window.scrollY || document.documentElement.scrollTop;
+        const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+        const pct = docHeight > 0 ? Math.min(100, Math.max(0, (scrollTop / docHeight) * 100)) : 0;
+        progressBar.style.width = `${pct}%`;
+      };
+      window.addEventListener('scroll', updateProgress, { passive: true });
+      updateProgress();
+
+      // 4. Sticky TOC scrollspy
+      const tocLinks = Array.from(document.querySelectorAll('.toc-rail a[data-toc-link]'));
+      if (tocLinks.length > 0 && 'IntersectionObserver' in window) {
+        const headingEls = tocLinks
+          .map((link) => document.getElementById(link.getAttribute('data-toc-link') || ''))
+          .filter(Boolean);
+
+        const setActive = (id) => {
+          tocLinks.forEach((link) => {
+            link.classList.toggle('active', link.getAttribute('data-toc-link') === id);
+          });
+        };
+
+        const observer = new IntersectionObserver(
+          (entries) => {
+            for (const entry of entries) {
+              if (entry.isIntersecting) {
+                setActive(entry.target.id);
+                break;
+              }
+            }
+          },
+          { rootMargin: '-80px 0px -68% 0px', threshold: 0.1 }
+        );
+        headingEls.forEach((el) => observer.observe(el));
+        if (headingEls[0]) setActive(headingEls[0].id);
+      }
+
+      // 5. Image click-to-zoom lightbox
+      document.querySelectorAll('.prose img').forEach((img) => {
+        img.addEventListener('click', () => {
+          const overlay = document.createElement('div');
+          overlay.className = 'lightbox-backdrop';
+          const cloned = document.createElement('img');
+          cloned.src = img.currentSrc || img.src;
+          cloned.alt = img.alt || '';
+          overlay.appendChild(cloned);
+          const close = () => overlay.remove();
+          overlay.addEventListener('click', close);
+          document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); }, { once: true });
+          document.body.appendChild(overlay);
+        });
+      });
     })();
   </script>
 </BaseLayout>

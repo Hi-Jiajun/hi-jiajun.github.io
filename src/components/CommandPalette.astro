@@ -1,0 +1,300 @@
+---
+import { PROJECTS, SITE } from '../config';
+
+const serializedProjects = PROJECTS.map((p) => ({
+  type: 'project',
+  title: p.name,
+  subtitle: `${p.language} · ${p.status} — ${p.summary}`,
+  url: p.repo,
+  external: true,
+  searchText: `${p.name} ${p.language} ${p.status} ${p.summary}`.toLowerCase(),
+}));
+---
+
+<div id="cmd-palette" class="cmd-backdrop" hidden aria-hidden="true">
+  <div class="cmd-dialog" role="dialog" aria-modal="true" aria-labelledby="cmd-input">
+    <div class="cmd-input-row">
+      <svg class="cmd-search-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="11" cy="11" r="8" />
+        <path d="m21 21-4.3-4.3" />
+      </svg>
+      <input
+        id="cmd-input"
+        class="cmd-input"
+        type="search"
+        placeholder="搜索文章、标签、开源项目，或执行操作…"
+        autocomplete="off"
+        spellcheck="false"
+      />
+      <kbd class="cmd-esc">ESC</kbd>
+    </div>
+
+    <div id="cmd-results" class="cmd-results" role="listbox"></div>
+
+    <div class="cmd-footer">
+      <span><kbd>↑</kbd><kbd>↓</kbd> 选择</span>
+      <span><kbd>Enter</kbd> 打开</span>
+      <span><kbd>Esc</kbd> 关闭</span>
+    </div>
+  </div>
+</div>
+
+<script is:inline define:vars={{ serializedProjects, siteGithub: SITE.github, siteBilibili: SITE.bilibili }}>
+  (() => {
+    const backdrop = document.getElementById('cmd-palette');
+    const input = document.getElementById('cmd-input');
+    const resultsEl = document.getElementById('cmd-results');
+    const triggerBtn = document.getElementById('open-cmd-btn');
+    if (!backdrop || !input || !resultsEl) return;
+
+    let cachedPosts = null;
+    let activeIndex = 0;
+    let currentItems = [];
+
+    const actions = [
+      { type: 'action', id: 'theme', title: '切换浅色 / 深色主题', subtitle: 'Switch color scheme', searchText: 'theme dark light 主题 暗黑 浅色 切换' },
+      { type: 'action', url: '/posts/', title: '前往文章归档', subtitle: '/posts/', searchText: 'posts archive 文章 归档' },
+      { type: 'action', url: '/projects/', title: '前往开源项目矩阵', subtitle: '/projects/', searchText: 'projects repos 项目 开源' },
+      { type: 'action', url: '/tags/', title: '前往标签索引', subtitle: '/tags/', searchText: 'tags 标签' },
+      { type: 'action', url: '/about/', title: '前往关于与赞助页', subtitle: '/about/', searchText: 'about sponsor 关于 赞助' },
+      { type: 'action', url: siteGithub, external: true, title: '打开 GitHub 主页', subtitle: 'github.com/Hi-Jiajun', searchText: 'github profile 主页' },
+      { type: 'action', url: siteBilibili, external: true, title: '打开 Bilibili 主页', subtitle: 'space.bilibili.com/474179427', searchText: 'bilibili b站 视频' },
+      { type: 'action', url: '/rss.xml', external: true, title: '打开 RSS 订阅源', subtitle: '/rss.xml', searchText: 'rss feed 订阅' },
+    ];
+
+    function esc(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function highlightText(raw, terms) {
+      let html = esc(raw);
+      if (!terms.length) return html;
+      const escapedTerms = terms
+        .map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+        .filter(Boolean);
+      if (!escapedTerms.length) return html;
+      const re = new RegExp(`(${escapedTerms.join('|')})`, 'gi');
+      return html.replace(re, '<mark>$1</mark>');
+    }
+
+    function extractSnippet(doc, terms) {
+      const text = doc.content || doc.summary || '';
+      if (!terms.length) return doc.summary || text.slice(0, 96);
+      const lower = text.toLowerCase();
+      let idx = -1;
+      for (const term of terms) {
+        const pos = lower.indexOf(term);
+        if (pos !== -1 && (idx === -1 || pos < idx)) idx = pos;
+      }
+      if (idx === -1) return doc.summary || text.slice(0, 96);
+      const start = Math.max(0, idx - 26);
+      const end = Math.min(text.length, idx + 70);
+      const prefix = start > 0 ? '…' : '';
+      const suffix = end < text.length ? '…' : '';
+      return `${prefix}${text.slice(start, end)}${suffix}`;
+    }
+
+    async function ensurePosts() {
+      if (cachedPosts !== null) return cachedPosts;
+      try {
+        const res = await fetch('/search-index.json');
+        const data = await res.json();
+        cachedPosts = Array.isArray(data) ? data : [];
+      } catch {
+        cachedPosts = [];
+      }
+      return cachedPosts;
+    }
+
+    function renderGroup(label, items, terms, offset) {
+      if (!items.length) return '';
+      const rows = items
+        .map((item, idx) => {
+          const globalIdx = offset + idx;
+          const selected = globalIdx === activeIndex ? ' selected' : '';
+          const badge = item.badge ? `<span class="cmd-badge">${esc(item.badge)}</span>` : '';
+          const ext = item.external ? '<span class="cmd-ext">↗</span>' : '';
+          return `
+            <button type="button" class="cmd-item${selected}" data-idx="${globalIdx}" role="option" aria-selected="${globalIdx === activeIndex}">
+              <div class="cmd-item-main">
+                <div class="cmd-item-title">${highlightText(item.title, terms)}</div>
+                <div class="cmd-item-sub">${highlightText(item.subtitle, terms)}</div>
+              </div>
+              <div class="cmd-item-meta">${badge}${ext}</div>
+            </button>
+          `;
+        })
+        .join('');
+      return `<div class="cmd-group-label">${esc(label)}</div>${rows}`;
+    }
+
+    async function updateResults() {
+      const posts = await ensurePosts();
+      const q = input.value.trim().toLowerCase();
+      const terms = q ? q.split(/\s+/).filter(Boolean) : [];
+
+      const matchedPosts = posts
+        .filter((doc) => {
+          if (!terms.length) return true;
+          const hay = `${doc.title}\n${(doc.tags || []).join(' ')}\n${doc.summary}\n${doc.content}`.toLowerCase();
+          return terms.every((t) => hay.includes(t));
+        })
+        .slice(0, terms.length ? 6 : 4)
+        .map((doc) => ({
+          type: 'post',
+          title: doc.title,
+          subtitle: extractSnippet(doc, terms),
+          badge: doc.date,
+          url: `/posts/${encodeURIComponent(doc.slug)}/`,
+        }));
+
+      const matchedProjects = serializedProjects
+        .filter((p) => !terms.length || terms.every((t) => p.searchText.includes(t)))
+        .slice(0, terms.length ? 5 : 3);
+
+      const matchedActions = actions
+        .filter((a) => !terms.length || terms.every((t) => a.searchText.includes(t)))
+        .slice(0, terms.length ? 4 : 3);
+
+      currentItems = [...matchedPosts, ...matchedProjects, ...matchedActions];
+      if (activeIndex >= currentItems.length) activeIndex = Math.max(0, currentItems.length - 1);
+
+      if (!currentItems.length) {
+        resultsEl.innerHTML = '<div class="cmd-empty">没有找到匹配的文章、项目或操作</div>';
+        return;
+      }
+
+      let html = '';
+      let offset = 0;
+      html += renderGroup('文章 · Posts', matchedPosts, terms, offset);
+      offset += matchedPosts.length;
+      html += renderGroup('开源项目 · Repositories', matchedProjects, terms, offset);
+      offset += matchedProjects.length;
+      html += renderGroup('快捷操作 · Actions', matchedActions, terms, offset);
+      resultsEl.innerHTML = html;
+
+      resultsEl.querySelectorAll('.cmd-item').forEach((btn) => {
+        btn.addEventListener('mouseenter', () => {
+          activeIndex = Number(btn.dataset.idx);
+          syncSelectionVisual();
+        });
+        btn.addEventListener('click', () => executeItem(Number(btn.dataset.idx)));
+      });
+    }
+
+    function syncSelectionVisual() {
+      const els = resultsEl.querySelectorAll('.cmd-item');
+      els.forEach((el, idx) => {
+        const isSel = idx === activeIndex;
+        el.classList.toggle('selected', isSel);
+        el.setAttribute('aria-selected', String(isSel));
+        if (isSel) el.scrollIntoView({ block: 'nearest' });
+      });
+    }
+
+    function executeItem(idx) {
+      const item = currentItems[idx];
+      if (!item) return;
+      closePalette();
+      if (item.id === 'theme') {
+        const current = document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light';
+        const next = current === 'dark' ? 'light' : 'dark';
+        document.documentElement.dataset.theme = next;
+        localStorage.setItem('theme', next);
+        return;
+      }
+      if (item.url) {
+        if (item.external) {
+          window.open(item.url, '_blank', 'noopener,noreferrer');
+        } else {
+          window.location.href = item.url;
+        }
+      }
+    }
+
+    function openPalette(prefill = '') {
+      backdrop.hidden = false;
+      backdrop.setAttribute('aria-hidden', 'false');
+      document.body.style.overflow = 'hidden';
+      if (prefill) input.value = prefill;
+      activeIndex = 0;
+      updateResults();
+      requestAnimationFrame(() => {
+        input.focus();
+        input.select();
+      });
+    }
+
+    function closePalette() {
+      backdrop.hidden = true;
+      backdrop.setAttribute('aria-hidden', 'true');
+      document.body.style.overflow = '';
+    }
+
+    window.__openCommandPalette = openPalette;
+
+    if (triggerBtn) {
+      triggerBtn.addEventListener('click', () => openPalette());
+    }
+
+    backdrop.addEventListener('click', (e) => {
+      if (e.target === backdrop) closePalette();
+    });
+
+    input.addEventListener('input', () => {
+      activeIndex = 0;
+      updateResults();
+    });
+
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        if (currentItems.length) {
+          activeIndex = (activeIndex + 1) % currentItems.length;
+          syncSelectionVisual();
+        }
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (currentItems.length) {
+          activeIndex = (activeIndex - 1 + currentItems.length) % currentItems.length;
+          syncSelectionVisual();
+        }
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        executeItem(activeIndex);
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        closePalette();
+      }
+    });
+
+    document.addEventListener('keydown', (e) => {
+      const target = e.target;
+      const isInput =
+        target instanceof HTMLElement &&
+        (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable);
+
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        if (backdrop.hidden) openPalette();
+        else closePalette();
+        return;
+      }
+      if (e.key === '/' && !isInput && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        if (!window.location.pathname.startsWith('/search')) {
+          e.preventDefault();
+          openPalette();
+        }
+        return;
+      }
+      if (e.key === 'Escape' && !backdrop.hidden) {
+        e.preventDefault();
+        closePalette();
+      }
+    });
+  })();
+</script>

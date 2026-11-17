@@ -5,27 +5,40 @@ import { PROJECT_CATEGORIES, PROJECTS, type ProjectItem } from '../config';
 const categoryOrder: ProjectItem['category'][] = ['dataplane', 'drivers', 'mobile', 'gpu-ai'];
 ---
 
-<BaseLayout title="开源项目" description="Hi-Jiajun 维护的原创开源项目与硬件实验索引。">
+<BaseLayout title="开源项目" description="Hi-Jiajun 维护的原创开源项目与硬件实验索引。" wide={true}>
   <div class="article-header">
     <p class="hero-kicker">PUBLIC WORKBENCH · {PROJECTS.length} REPOS</p>
-    <h1>开源项目与实验</h1>
+    <h1>开源项目矩阵</h1>
     <p style="margin: 0.4rem 0 0; color: var(--text-soft);">
       GitHub 上既有从零编写并持续维护的工具/插件，也有聚焦单台设备或特定固件边界的工程实验档案。
     </p>
+  </div>
+
+  <div id="project-filter-tabs" class="filter-tabs" role="tablist" aria-label="按领域筛选项目">
+    <button type="button" class="filter-tab active" data-cat="all">全部 ({PROJECTS.length})</button>
+    {categoryOrder.map((key) => {
+      const meta = PROJECT_CATEGORIES[key];
+      const count = PROJECTS.filter((p) => p.category === key).length;
+      return (
+        <button type="button" class="filter-tab" data-cat={key}>
+          {meta.title} ({count})
+        </button>
+      );
+    })}
   </div>
 
   {categoryOrder.map((key) => {
     const meta = PROJECT_CATEGORIES[key];
     const items = PROJECTS.filter((p) => p.category === key);
     return (
-      <section>
+      <section class="project-cat-section" data-cat-section={key}>
         <div class="section-head">
           <h2>{meta.title}</h2>
           <span class="more-link">{meta.subtitle}</span>
         </div>
         <div class="grid-2">
           {items.map((project) => (
-            <article class="card">
+            <article class="card" style={`--card-accent: ${meta.domainColor};`}>
               <div class="project-card-top">
                 <a class="project-title" href={project.repo} target="_blank" rel="noopener noreferrer">
                   {project.name}
@@ -49,4 +62,22 @@ const categoryOrder: ProjectItem['category'][] = ['dataplane', 'drivers', 'mobil
       </section>
     );
   })}
+
+  <script is:inline>
+    (() => {
+      const tabs = document.getElementById('project-filter-tabs');
+      const sections = document.querySelectorAll('.project-cat-section');
+      if (!tabs) return;
+      tabs.addEventListener('click', (e) => {
+        const btn = e.target instanceof Element ? e.target.closest('button[data-cat]') : null;
+        if (!btn) return;
+        const cat = btn.getAttribute('data-cat') || 'all';
+        tabs.querySelectorAll('button[data-cat]').forEach((b) => b.classList.toggle('active', b === btn));
+        sections.forEach((sec) => {
+          const secCat = sec.getAttribute('data-cat-section');
+          sec.style.display = cat === 'all' || secCat === cat ? '' : 'none';
+        });
+      });
+    })();
+  </script>
 </BaseLayout>

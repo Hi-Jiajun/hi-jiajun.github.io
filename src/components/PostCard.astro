@@ -17,21 +17,27 @@ const summary = post.data.summary ?? extractExcerpt(post.body);
 const { minutes } = estimateReadingTime(post.body);
 ---
 
-<article class="post-item">
-  <div class="post-meta">
-    <time datetime={post.data.date.toISOString()}>{formatDate(post.data.date)}</time>
-    <span>·</span>
-    <span>约 {minutes} 分钟阅读</span>
+<article class="timeline-row" data-tags={post.data.tags.join(',')}>
+  <time class="timeline-date" datetime={post.data.date.toISOString()}>
+    {formatDate(post.data.date)}
+  </time>
+
+  <div class="timeline-body">
+    <h3>
+      <a href={`/posts/${slug}/`}>{post.data.title}</a>
+    </h3>
+    {summary && <p class="timeline-summary">{summary}</p>}
+    {post.data.tags.length > 0 && (
+      <div class="tag-row">
+        {post.data.tags.map((tag) => (
+          <a class="tag-pill" href={`/tags/${encodeURIComponent(tag)}/`}>#{tag}</a>
+        ))}
+      </div>
+    )}
   </div>
-  <h3>
-    <a href={`/posts/${slug}/`}>{post.data.title}</a>
-  </h3>
-  {summary && <p class="post-summary">{summary}</p>}
-  {post.data.tags.length > 0 && (
-    <div class="tag-row">
-      {post.data.tags.map((tag) => (
-        <a class="tag-pill" href={`/tags/${encodeURIComponent(tag)}/`}>#{tag}</a>
-      ))}
-    </div>
-  )}
+
+  <div class="timeline-aside">
+    <span>{minutes} min</span>
+    <span class="timeline-arrow" aria-hidden="true">→</span>
+  </div>
 </article>

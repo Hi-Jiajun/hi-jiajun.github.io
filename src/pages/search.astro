@@ -4,7 +4,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 
 <BaseLayout title="站内搜索" description="实时搜索全部文章标题、标签与正文内容。">
   <div class="article-header">
-    <p class="hero-kicker">INSTANT SEARCH</p>
+    <p class="hero-kicker">INSTANT SEARCH · ⌘K</p>
     <h1>搜索文章</h1>
   </div>
 
@@ -20,7 +20,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
   </div>
 
   <p id="search-status" class="search-status">正在加载索引…</p>
-  <div id="search-results" class="post-list"></div>
+  <div id="search-results" class="timeline-list"></div>
 
   <script is:inline>
     (() => {
@@ -32,7 +32,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
       let docs = [];
 
       function escapeHtml(str) {
-        return str
+        return String(str)
           .replace(/&/g, '&amp;')
           .replace(/</g, '&lt;')
           .replace(/>/g, '&gt;')
@@ -51,10 +51,10 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 
         status.textContent = terms.length
           ? `找到 ${matched.length} 篇匹配文章`
-          : `共索引 ${docs.length} 篇文章，输入关键词即可过滤`;
+          : `共索引 ${docs.length} 篇文章，输入关键词即可过滤（任意页面可按 ⌘K 或 / 呼出快速搜索）`;
 
         if (!matched.length) {
-          results.innerHTML = '<div class="card"><p>没有找到匹配的文章，试试更换关键词。</p></div>';
+          results.innerHTML = '<div style="padding:1.25rem;color:var(--muted);">没有找到匹配的文章，试试更换关键词。</div>';
           return;
         }
 
@@ -64,11 +64,14 @@ import BaseLayout from '../layouts/BaseLayout.astro';
               .map((t) => `<a class="tag-pill" href="/tags/${encodeURIComponent(t)}/">#${escapeHtml(t)}</a>`)
               .join('');
             return `
-              <article class="post-item">
-                <div class="post-meta"><time>${escapeHtml(doc.date)}</time></div>
-                <h3><a href="/posts/${encodeURIComponent(doc.slug)}/">${escapeHtml(doc.title)}</a></h3>
-                <p class="post-summary">${escapeHtml(doc.summary)}</p>
-                ${tagsHtml ? `<div class="tag-row">${tagsHtml}</div>` : ''}
+              <article class="timeline-row">
+                <time class="timeline-date">${escapeHtml(doc.date)}</time>
+                <div class="timeline-body">
+                  <h3><a href="/posts/${encodeURIComponent(doc.slug)}/">${escapeHtml(doc.title)}</a></h3>
+                  <p class="timeline-summary">${escapeHtml(doc.summary)}</p>
+                  ${tagsHtml ? `<div class="tag-row">${tagsHtml}</div>` : ''}
+                </div>
+                <div class="timeline-aside"><span class="timeline-arrow">→</span></div>
               </article>
             `;
           })

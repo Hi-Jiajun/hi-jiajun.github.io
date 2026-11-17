@@ -8,6 +8,9 @@ draft: false
 
 在手机内核和外部内核模块（`.ko`）的日常折腾里，最容易踩的坑往往不是代码逻辑本身，而是**基线混用**和**符号 ABI 漂移**——拿着开源旧版设备树改完刷机失联，或者内核小版本多了一个 `+` / `-dirty` 后缀导致整批外部模块全部 `ENOEXEC`。
 
+> [!IMPORTANT]
+> 开源参考设备树（`dts-oss/6.6.30-android15-v/`）仅用于查阅宏定义与节点语义，**严禁直接当作现行真机设备树编译刷入**。
+
 [`Hi-Jiajun/dijun-kernel-devicetree`](https://github.com/Hi-Jiajun/dijun-kernel-devicetree) 就是为了把小米 15S Pro（代号 `dijun`，XRING O1，`25042PN24C`）的设备树基线和 AOSP `android17-6.18-2026-09`（`6.18.32-4k`）内核模块构建契约固化下来。
 
 ## 四套 DTS 基线严格分层

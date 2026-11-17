@@ -9,14 +9,38 @@ const postsDir = path.resolve(__dirname, '../src/content/posts');
 
 const args = process.argv.slice(2);
 const dryRun = args.includes('--dry-run');
-const positional = args.filter((a) => a !== '--dry-run');
+
+let tags = ['随笔'];
+const positional = [];
+for (let i = 0; i < args.length; i += 1) {
+  const arg = args[i];
+  if (arg === '--dry-run') continue;
+  if (arg === '--tags' && args[i + 1]) {
+    tags = args[i + 1]
+      .split(',')
+      .map((t) => t.trim())
+      .filter(Boolean);
+    i += 1;
+    continue;
+  }
+  if (arg.startsWith('--tags=')) {
+    tags = arg
+      .slice('--tags='.length)
+      .split(',')
+      .map((t) => t.trim())
+      .filter(Boolean);
+    continue;
+  }
+  positional.push(arg);
+}
 
 if (positional.length === 0 || args.includes('-h') || args.includes('--help')) {
   console.log('用法:');
   console.log('  pnpm new "文章标题"');
-  console.log('  pnpm new custom-slug "文章标题"');
+  console.log('  pnpm new custom-slug "文章标题" --tags "VPP,系统"');
   console.log('可选参数:');
-  console.log('  --dry-run   仅预览生成的路径与内容，不写入磁盘');
+  console.log('  --tags "A,B"  指定逗号分隔的标签列表');
+  console.log('  --dry-run     仅预览生成的路径与内容，不写入磁盘');
   process.exit(positional.length === 0 ? 1 : 0);
 }
 
@@ -47,11 +71,12 @@ if (fs.existsSync(filePath)) {
   process.exit(1);
 }
 
+const formattedTags = tags.map((t) => `"${t.replace(/"/g, '\\"')}"`).join(', ');
 const content = `---
 title: "${title.replace(/"/g, '\\"')}"
 date: ${isoOffset}
 summary: ""
-tags: ["随笔"]
+tags: [${formattedTags}]
 draft: false
 ---
 
