@@ -1,0 +1,49 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { SITE } from '../config';
+---
+
+<BaseLayout title="关于" description="关于 Hi-Jiajun (KiLiminal) 与这个技术工作台。">
+  <div class="article-header">
+    <p class="hero-kicker">ABOUT · {SITE.location}</p>
+    <h1>关于我</h1>
+  </div>
+
+  <div class="prose">
+    <p>
+      你好，我是 <strong>{SITE.author}</strong>，坐标中国四川眉山。
+      我把 GitHub 和这个博客当成公开工作台，记录那些自己从零写起、或者在真实硬件上反复折腾验证的项目与工程笔记。
+    </p>
+
+    <h2>我在折腾什么</h2>
+    <ul>
+      <li><strong>用户态网络数据面</strong>：FD.io VPP 的 PPPoE 客户端插件（<code>vpp-pppoeclient</code>）与基于 VPP 的路由器原型 <code>VectorOS</code>。</li>
+      <li><strong>内核驱动与系统移植</strong>：MediaTek MT792x 原生 IO80211 macOS 驱动（<code>AirportMtk-macOS</code>）、ConnectX-3 Pro IOKit 驱动（<code>ConnectX3-macOS</code>）以及 Zen 5 / B850 黑苹果实测边界记录。</li>
+      <li><strong>移动终端内核与无线研究</strong>：小米 15S Pro（<code>dijun</code> / XRING O1）设备树还原与 GKI 6.18 KMI/CRC 门禁（<code>dijun-kernel-devicetree</code>）、MT6639 Wi-Fi 7 能力验证（<code>mt6639-wifi7-dijun</code>）。</li>
+      <li><strong>GPU 与 AI 工程工具</strong>：基于 Vulkan 复刻 Metal 计算语义的 <code>metal-api-emulator</code>，以及多 Key 路由网关 <code>tavily-router</code> 等小工具。</li>
+    </ul>
+
+    <h2>联系方式</h2>
+    <ul>
+      <li>GitHub：<a href={SITE.github} target="_blank" rel="noopener noreferrer">{SITE.github}</a></li>
+      <li>Email：<a href={`mailto:${SITE.email}`}>{SITE.email}</a></li>
+      <li>RSS：<a href="/rss.xml">https://hi-jiajun.github.io/rss.xml</a></li>
+    </ul>
+
+    <h2>赞助支持</h2>
+    <p>如果这里的开源项目或文章对你有帮助，欢迎请我喝杯咖啡：</p>
+    <details class="toc-box">
+      <summary>展开微信 / 支付宝赞赏码</summary>
+      <div class="grid-2" style="margin-top: 1rem;">
+        <div class="card" style="text-align: center;">
+          <img src={SITE.sponsor.wechatQr} alt="微信赞赏码" width="220" loading="lazy" />
+          <p><strong>微信 · WeChat</strong></p>
+        </div>
+        <div class="card" style="text-align: center;">
+          <img src={SITE.sponsor.alipayQr} alt="支付宝赞赏码" width="220" loading="lazy" />
+          <p><strong>支付宝 · Alipay</strong></p>
+        </div>
+      </div>
+    </details>
+  </div>
+</BaseLayout>

@@ -1,0 +1,142 @@
+---
+import { render } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { SITE } from '../../config';
+import {
+  type BlogPost,
+  estimateReadingTime,
+  extractExcerpt,
+  formatDate,
+  getPostSlug,
+  getPublishedPosts,
+} from '../../utils/posts';
+
+export async function getStaticPaths() {
+  const posts = await getPublishedPosts();
+  return posts.map((post, index) => ({
+    params: { slug: getPostSlug(post) },
+    props: {
+      post,
+      nextPost: index > 0 ? posts[index - 1] : null,
+      prevPost: index < posts.length - 1 ? posts[index + 1] : null,
+    },
+  }));
+}
+
+interface Props {
+  post: BlogPost;
+  prevPost: BlogPost | null;
+  nextPost: BlogPost | null;
+}
+
+const { post, prevPost, nextPost } = Astro.props;
+const { Content, headings } = await render(post);
+const tocHeadings = headings.filter((h) => h.depth >= 2 && h.depth <= 4);
+const { minutes, words } = estimateReadingTime(post.body);
+const description = post.data.summary ?? extractExcerpt(post.body);
+const sourcePath = post.filePath
+  ? post.filePath.replace(/^.*?src\/content\/posts\//, 'src/content/posts/')
+  : `src/content/posts/${post.id}`;
+const editUrl = `${SITE.repo}/blob/main/${sourcePath}`;
+---
+
+<BaseLayout title={post.data.title} description={description}>
+  <article>
+    <header class="article-header">
+      <div class="post-meta">
+        <time datetime={post.data.date.toISOString()}>{formatDate(post.data.date)}</time>
+        {post.data.updated && (
+          <>
+            <span>·</span>
+            <span>更新于 {formatDate(post.data.updated)}</span>
+          </>
+        )}
+        <span>·</span>
+        <span>约 {words} 字 / {minutes} 分钟</span>
+      </div>
+
+      <h1>{post.data.title}</h1>
+
+      {post.data.tags.length > 0 && (
+        <div class="tag-row">
+          {post.data.tags.map((tag) => (
+            <a class="tag-pill" href={`/tags/${encodeURIComponent(tag)}/`}>#{tag}</a>
+          ))}
+        </div>
+      )}
+    </header>
+
+    {tocHeadings.length >= 2 && (
+      <details class="toc-box" open>
+        <summary>目录（{tocHeadings.length} 节）</summary>
+        <ul class="toc-list">
+          {tocHeadings.map((heading) => (
+            <li class={`depth-${heading.depth}`}>
+              <a href={`#${heading.slug}`}>{heading.text}</a>
+            </li>
+          ))}
+        </ul>
+      </details>
+    )}
+
+    <div class="prose">
+      <Content />
+    </div>
+
+    <div style="margin-top: 2rem; font-size: 0.9rem; color: var(--muted);">
+      <a href={editUrl} target="_blank" rel="noopener noreferrer">在 GitHub 上查看 / 编辑原文 →</a>
+    </div>
+
+    {(prevPost || nextPost) && (
+      <nav class="post-footer-nav" aria-label="文章导航">
+        <div>
+          {prevPost && (
+            <a class="pager-card" href={`/posts/${getPostSlug(prevPost)}/`}>
+              <span class="pager-label">← 上一篇</span>
+              <span class="pager-title">{prevPost.data.title}</span>
+            </a>
+          )}
+        </div>
+        <div>
+          {nextPost && (
+            <a class="pager-card" href={`/posts/${getPostSlug(nextPost)}/`}>
+              <span class="pager-label">下一篇 →</span>
+              <span class="pager-title">{nextPost.data.title}</span>
+            </a>
+          )}
+        </div>
+      </nav>
+    )}
+  </article>
+
+  <script is:inline>
+    (() => {
+      const blocks = document.querySelectorAll('.prose pre.astro-code');
+      for (const pre of blocks) {
+        if (pre.parentElement?.classList.contains('code-block-wrap')) continue;
+        const wrap = document.createElement('div');
+        wrap.className = 'code-block-wrap';
+        pre.parentNode?.insertBefore(wrap, pre);
+        wrap.appendChild(pre);
+
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'copy-code-btn';
+        btn.textContent = '复制';
+        btn.addEventListener('click', async () => {
+          const text = pre.innerText || pre.textContent || '';
+          try {
+            await navigator.clipboard.writeText(text);
+            btn.textContent = '已复制';
+          } catch {
+            btn.textContent = '复制失败';
+          }
+          setTimeout(() => {
+            btn.textContent = '复制';
+          }, 1800);
+        });
+        wrap.appendChild(btn);
+      }
+    })();
+  </script>
+</BaseLayout>

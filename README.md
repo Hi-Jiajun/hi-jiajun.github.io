@@ -1,176 +1,72 @@
-# 🚀 我的 Hugo 博客
+# Hi-Jiajun's Workbench Blog
 
-基于 [Hugo](https://gohugo.io/) + [PaperMod](https://github.com/adityatelange/hugo-PaperMod) 主题搭建的个人博客，使用 GitHub Pages 免费托管。
+基于 [Astro 5](https://astro.build/) 的极简个人技术博客，部署在 `https://hi-jiajun.github.io/`。
+
+设计目标只有一件事：**写文章几乎零摩擦**——所有文章都是 `src/content/posts/` 下的纯 Markdown 文件，不依赖 Git Submodule、外部 CMS 或数据库，推送到 `main` 分支后由 GitHub Actions 自动构建发布，并与 GitHub 个人主页 [`Hi-Jiajun/Hi-Jiajun`](https://github.com/Hi-Jiajun/Hi-Jiajun) 的「最新文章」自动同步。
 
 ## ✨ 特性
 
-- ⚡ **极速构建** - Hugo 静态生成，毫秒级构建
-- 🎨 **简洁美观** - PaperMod 主题，支持暗黑模式
-- 🔍 **全文搜索** - 内置搜索功能，无需第三方服务
-- 💬 **评论系统** - 集成 Giscus，基于 GitHub Discussions
-- 📱 **响应式设计** - 完美适配各种设备
-- 🌐 **SEO 友好** - 自动生成 sitemap、RSS
-- 📊 **阅读统计** - 显示阅读时间、字数统计
-- 🏷️ **标签分类** - 支持标签和分类归档
+- **纯 Markdown 写作**：支持 GFM 表格、Shiki 双主题代码高亮、一键复制代码、自动生成目录（TOC）
+- **开箱即用**：内置浅色 / 深色主题切换、全站实时搜索（快捷键 `/`）、标签归档、RSS（`/rss.xml`）与 Sitemap
+- **零 submodule / 零运维**：只需 Node.js + pnpm（或直接在 GitHub 网页端新建 `.md` 文件）
 
-## 🚀 快速开始
+## ✍️ 日常怎么发文章
 
-### 1. 克隆仓库
+### 方式一：本地命令一键新建（推荐）
 
 ```bash
-git clone https://github.com/Hi-Jiajun/hi-jiajun.github.io.git
-cd hi-jiajun.github.io
+# 1. 新建一篇文章（自动生成日期前缀与 Frontmatter）
+pnpm new my-topic "我的新文章标题"
+
+# 2. 编辑生成的 src/content/posts/YYYY-MM-DD-my-topic.md
+
+# 3. 本地实时预览（可选）
+pnpm dev
+
+# 4. 推送即自动部署
+git add . && git commit -m "post: add my-topic" && git push
 ```
 
-### 2. 安装 Hugo
+### 方式二：直接在 GitHub 网页写
 
-**MacOS:**
-```bash
-brew install hugo
-```
-
-**Linux (Ubuntu/Debian):**
-```bash
-wget https://github.com/gohugoio/hugo/releases/download/v0.128.0/hugo_extended_0.128.0_linux-amd64.deb
-sudo dpkg -i hugo_extended_0.128.0_linux-amd64.deb
-```
-
-**Windows:**
-```bash
-choco install hugo-extended
-```
-
-### 3. 本地预览
-
-```bash
-hugo server -D
-```
-
-访问 http://localhost:1313 预览博客。
-
-### 4. 创建新文章
-
-```bash
-hugo new posts/my-new-post.md
-```
-
-编辑 `content/posts/my-new-post.md` 文件即可。
-
-## 📁 项目结构
-
-```
-blog/
-├── .github/
-│   └── workflows/
-│       └── hugo.yaml          # GitHub Actions 部署配置
-├── content/
-│   ├── posts/                 # 博客文章
-│   │   └── hello-world.md
-│   ├── about.md               # 关于页面
-│   ├── archives.md            # 归档页面
-│   └── search.md              # 搜索页面
-├── themes/
-│   └── PaperMod/              # PaperMod 主题
-├── hugo.yaml                  # Hugo 配置文件
-├── GISCUS_SETUP.md            # Giscus 评论配置指南
-└── README.md                  # 项目说明
-```
-
-## ⚙️ 自定义配置
-
-### 修改基本信息
-
-编辑 `hugo.yaml` 文件：
-
-```yaml
-title: "你的博客标题"
-baseURL: "https://hi-jiajun.github.io/"
-
-params:
-  author: "你的名字"
-  description: "你的博客描述"
-  socialIcons:
-    - name: "github"
-      url: "https://github.com/Hi-Jiajun"
-```
-
-### 配置评论系统
-
-按照 [GISCUS_SETUP.md](./GISCUS_SETUP.md) 的说明配置 Giscus 评论系统。
-
-## 📝 写文章
-
-### 文章模板
+在仓库 `src/content/posts/` 目录下点 **Add file → Create new file**，文件名按 `YYYY-MM-DD-slug.md` 命名，填入如下 Frontmatter 后提交即可自动发布：
 
 ```markdown
 ---
 title: "文章标题"
-date: 2026-06-04T10:00:00+08:00
+date: 2026-11-18T12:00:00+08:00
+summary: "一句话摘要（可选，不写会自动截取正文前 150 字）"
+tags: ["VPP", "系统"]
 draft: false
-tags: ["标签1", "标签2"]
-categories: ["分类"]
-summary: "文章摘要，会显示在列表页"
 ---
 
-## 正文内容
-
-在这里写你的文章内容...
+正文内容...
 ```
 
-### Frontmatter 参数
+## 📁 目录结构
 
-| 参数 | 说明 | 示例 |
-|------|------|------|
-| `title` | 文章标题 | `"我的文章"` |
-| `date` | 发布日期 | `2026-06-04T10:00:00+08:00` |
-| `draft` | 是否为草稿 | `false` |
-| `tags` | 标签 | `["Hugo", "教程"]` |
-| `categories` | 分类 | `["技术"]` |
-| `summary` | 文章摘要 | `"这是摘要"` |
-| `showComments` | 是否显示评论 | `true` |
-| `showToc` | 是否显示目录 | `true` |
+```text
+.
+├── .github/workflows/deploy.yml  # GitHub Pages 自动构建与发布
+├── scripts/new-post.mjs          # pnpm new 一键新建文章脚本
+├── src/
+│   ├── config.ts                 # 站点信息、项目清单与赞助配置（集中维护）
+│   ├── content.config.ts         # Astro Content Layer 文章集合 Schema
+│   ├── content/posts/            # 所有 Markdown 文章
+│   ├── components/               # 页头、页脚、文章卡片
+│   ├── layouts/BaseLayout.astro  # 全局布局与暗黑模式切换
+│   ├── pages/                    # 首页、文章页、标签、项目、搜索、关于、RSS
+│   ├── styles/global.css         # 响应式样式与代码块主题
+│   └── utils/posts.ts            # 阅读时长、摘要提取、排序工具
+├── astro.config.mjs
+└── package.json
+```
 
-## 🚀 部署
-
-本项目使用 GitHub Actions 自动部署，每次推送到 `main` 分支都会自动构建和部署。
-
-### 部署步骤
-
-1. 在 GitHub 创建仓库 `hi-jiajun.github.io`
-2. 推送代码到仓库
-3. 进入仓库 **Settings** → **Pages**
-4. **Source** 选择 **GitHub Actions**
-5. 等待部署完成
-
-部署完成后，访问 `https://hi-jiajun.github.io/` 即可看到博客。
-
-## 🔧 常用命令
+## 🔧 本地开发命令
 
 ```bash
-# 本地预览（包含草稿）
-hugo server -D
-
-# 创建新文章
-hugo new posts/my-post.md
-
-# 构建静态文件
-hugo --minify
-
-# 更新主题
-git submodule update --remote --merge
+pnpm install   # 安装依赖
+pnpm dev       # 启动本地开发服务器 (http://localhost:4321)
+pnpm build     # 生成静态站点到 dist/
+pnpm preview   # 预览 dist/ 构建产物
 ```
-
-## 📚 相关资源
-
-- [Hugo 官方文档](https://gohugo.io/documentation/)
-- [PaperMod 主题文档](https://adityatelange.github.io/hugo-PaperMod/)
-- [GitHub Pages 文档](https://docs.github.com/en/pages)
-- [Giscus 评论系统](https://giscus.app/zh-CN)
-
-## 🤝 贡献
-
-欢迎提交 Issue 和 Pull Request！
-
-## 📄 许可证
-
-本项目基于 MIT 许可证开源。

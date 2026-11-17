@@ -1,0 +1,16 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+
+<BaseLayout title="页面未找到 (404)" description="请求的页面不存在。">
+  <section class="hero" style="text-align: center; padding: 3rem 1.5rem;">
+    <p class="hero-kicker">404 NOT FOUND</p>
+    <h1>这里没有找到内容</h1>
+    <p style="margin: 0 auto 1.4rem;">链接可能已随站点重构移动，可以回到首页或通过站内搜索查找文章。</p>
+    <div class="hero-actions" style="justify-content: center;">
+      <a class="pill-btn primary" href="/">返回首页</a>
+      <a class="pill-btn" href="/posts/">文章归档</a>
+      <a class="pill-btn" href="/search/">站内搜索</a>
+    </div>
+  </section>
+</BaseLayout>
