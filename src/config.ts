@@ -29,6 +29,15 @@ export const SITE = {
   },
 } as const;
 
+export const GISCUS = {
+  repo: 'Hi-Jiajun/hi-jiajun.github.io',
+  repoId: 'R_kgDOSwz3uQ',
+  category: 'Announcements',
+  categoryId: 'DIC_kwDOSwz3uc4DLZBC',
+  mapping: 'pathname',
+  lang: 'zh-CN',
+} as const;
+
 export const PROJECT_CATEGORIES: Record<
   ProjectItem['category'],
   { title: string; subtitle: string; domainLabel: string; domainColor: string; domainColorLight: string }

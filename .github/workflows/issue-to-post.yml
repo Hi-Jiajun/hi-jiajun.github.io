@@ -1,0 +1,50 @@
+name: Issue to Blog Post PR
+
+on:
+  issues:
+    types:
+      - labeled
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  issue-to-post:
+    if: >-
+      github.event.issue.user.login == 'Hi-Jiajun' &&
+      (github.event.label.name == 'publish' || github.event.label.name == 'ai-draft')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Convert issue to Markdown post
+        id: convert
+        run: node scripts/issue-to-post.mjs
+
+      - name: Open Pull Request & comment on Issue
+        if: steps.convert.outputs.post_path != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ISSUE_NUM="${{ steps.convert.outputs.issue_number }}"
+          BRANCH="issue-post/${ISSUE_NUM}-${{ github.run_id }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+          git add "${{ steps.convert.outputs.post_path }}"
+          git commit -m "post: from issue #${ISSUE_NUM}"
+          git push -u origin "$BRANCH"
+          PR_URL=$(gh pr create \
+            --title "📝 Issue #${ISSUE_NUM}: ${{ steps.convert.outputs.post_title }}" \
+            --body "由 Issue #${ISSUE_NUM} 自动转换生成文章 \`${{ steps.convert.outputs.post_path }}\`。合并后将自动发布到博客。" \
+            --base main \
+            --head "$BRANCH")
+          gh issue comment "$ISSUE_NUM" --body "已自动生成文章 PR：${PR_URL} （审核合并后即可发布上线）"

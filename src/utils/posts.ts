@@ -1,6 +1,7 @@
 import { getCollection, type CollectionEntry } from 'astro:content';
 
 export type BlogPost = CollectionEntry<'posts'>;
+export type PostSource = 'manual' | 'ai';
 
 /**
  * Strip optional `YYYY-MM-DD-` prefix and `.md` extension from `post.id`
@@ -12,9 +13,53 @@ export function getPostSlug(post: BlogPost): string {
     .replace(/^\d{4}-\d{2}-\d{2}-/, '');
 }
 
-export async function getPublishedPosts(): Promise<BlogPost[]> {
-  const posts = await getCollection('posts', ({ data }) => !data.draft);
+export async function getPublishedPosts(source?: PostSource): Promise<BlogPost[]> {
+  const posts = await getCollection('posts', ({ data }) => {
+    if (data.draft) return false;
+    if (source && data.source !== source) return false;
+    return true;
+  });
   return posts.sort((a, b) => b.data.date.getTime() - a.data.date.getTime());
+}
+
+export function getSourceMeta(source: PostSource): {
+  label: string;
+  shortLabel: string;
+  className: string;
+  description: string;
+} {
+  if (source === 'ai') {
+    return {
+      label: 'AI 生成',
+      shortLabel: 'AI',
+      className: 'source-badge source-ai',
+      description: '由自动化工作流基于仓库提交记录或技术资料整理生成，经人工审核发布',
+    };
+  }
+  return {
+    label: '手写原创',
+    shortLabel: '手写',
+    className: 'source-badge source-manual',
+    description: '作者亲手撰写与实机记录',
+  };
+}
+
+export function getRelatedPosts(current: BlogPost, allPosts: BlogPost[], limit = 3): BlogPost[] {
+  const currentSlug = getPostSlug(current);
+  const currentTags = new Set(current.data.tags.map((t) => t.toLowerCase()));
+
+  return allPosts
+    .filter((p) => getPostSlug(p) !== currentSlug)
+    .map((p) => {
+      const overlap = p.data.tags.reduce(
+        (acc, t) => acc + (currentTags.has(t.toLowerCase()) ? 1 : 0),
+        0
+      );
+      return { post: p, overlap };
+    })
+    .sort((a, b) => b.overlap - a.overlap || b.post.data.date.getTime() - a.post.data.date.getTime())
+    .slice(0, limit)
+    .map((item) => item.post);
 }
 
 export function formatDate(date: Date): string {
@@ -61,4 +106,14 @@ export function getAllTags(posts: BlogPost[]): Array<{ tag: string; count: numbe
   return Array.from(counts.entries())
     .map(([tag, count]) => ({ tag, count }))
     .sort((a, b) => b.count - a.count || a.tag.localeCompare(b.tag, 'zh-CN'));
+}
+
+export function buildRssItems(posts: BlogPost[]) {
+  return posts.map((post) => ({
+    title: post.data.title,
+    pubDate: post.data.date,
+    description: post.data.summary ?? extractExcerpt(post.body, 160),
+    link: `/posts/${getPostSlug(post)}/`,
+    categories: [post.data.source, ...post.data.tags],
+  }));
 }

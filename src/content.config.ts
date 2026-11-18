@@ -9,6 +9,9 @@ const posts = defineCollection({
     updated: z.coerce.date().optional(),
     summary: z.string().optional(),
     tags: z.array(z.string()).default([]),
+    source: z.enum(['manual', 'ai']).default('manual'),
+    aiModel: z.string().optional(),
+    aiRepo: z.string().optional(),
     draft: z.boolean().default(false),
   }),
 });

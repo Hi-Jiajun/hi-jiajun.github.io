@@ -3,6 +3,7 @@ title: "把公开工作台搬进博客：为什么重做这个站点"
 date: 2026-11-18T00:30:00+08:00
 summary: "放弃旧的 Hugo + PaperMod + CMS 模板，用 Astro 与纯 Markdown 重建一个写起来毫无摩擦的个人技术博客，并与 GitHub 个人主页自动联动。"
 tags: ["博客", "工作台", "Astro"]
+source: "ai"
 draft: false
 ---
 

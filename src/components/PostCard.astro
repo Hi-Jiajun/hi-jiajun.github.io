@@ -5,6 +5,7 @@ import {
   extractExcerpt,
   formatDate,
   getPostSlug,
+  getSourceMeta,
 } from '../utils/posts';
 
 interface Props {
@@ -15,9 +16,10 @@ const { post } = Astro.props;
 const slug = getPostSlug(post);
 const summary = post.data.summary ?? extractExcerpt(post.body);
 const { minutes } = estimateReadingTime(post.body);
+const sourceMeta = getSourceMeta(post.data.source);
 ---
 
-<article class="timeline-row" data-tags={post.data.tags.join(',')}>
+<article class="timeline-row" data-tags={post.data.tags.join(',')} data-source={post.data.source}>
   <time class="timeline-date" datetime={post.data.date.toISOString()}>
     {formatDate(post.data.date)}
   </time>
@@ -27,13 +29,14 @@ const { minutes } = estimateReadingTime(post.body);
       <a href={`/posts/${slug}/`}>{post.data.title}</a>
     </h3>
     {summary && <p class="timeline-summary">{summary}</p>}
-    {post.data.tags.length > 0 && (
-      <div class="tag-row">
-        {post.data.tags.map((tag) => (
-          <a class="tag-pill" href={`/tags/${encodeURIComponent(tag)}/`}>#{tag}</a>
-        ))}
-      </div>
-    )}
+    <div class="tag-row">
+      <span class={sourceMeta.className} title={sourceMeta.description}>
+        {sourceMeta.label}
+      </span>
+      {post.data.tags.map((tag) => (
+        <a class="tag-pill" href={`/tags/${encodeURIComponent(tag)}/`}>#{tag}</a>
+      ))}
+    </div>
   </div>
 
   <div class="timeline-aside">

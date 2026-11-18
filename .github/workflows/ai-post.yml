@@ -1,0 +1,82 @@
+name: AI Auto Post PR
+
+on:
+  schedule:
+    - cron: "0 1 * * 1" # Every Monday 09:00 Asia/Shanghai
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "生成模式"
+        required: true
+        default: "weekly-digest"
+        type: choice
+        options:
+          - weekly-digest
+          - repo-deep-dive
+          - topic-note
+      target_repo:
+        description: "目标仓库名（repo-deep-dive 必填，如 vpp-pppoeclient）"
+        required: false
+        default: ""
+      topic:
+        description: "文章主题（topic-note 必填）"
+        required: false
+        default: ""
+      notes:
+        description: "补充提纲或要点（可选）"
+        required: false
+        default: ""
+      days:
+        description: "扫描最近几天的提交（weekly-digest 用）"
+        required: false
+        default: "7"
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  generate-ai-post:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Generate AI post
+        id: gen
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          LLM_BASE_URL: ${{ vars.LLM_BASE_URL }}
+          LLM_MODEL: ${{ vars.LLM_MODEL }}
+          AI_MODE: ${{ inputs.mode || 'weekly-digest' }}
+          AI_TARGET_REPO: ${{ inputs.target_repo || '' }}
+          AI_TOPIC: ${{ inputs.topic || '' }}
+          AI_NOTES: ${{ inputs.notes || '' }}
+          AI_DAYS: ${{ inputs.days || '7' }}
+        run: node scripts/generate-ai-post.mjs --skip-if-no-key
+
+      - name: Create Pull Request for review
+        if: steps.gen.outputs.post_path != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BRANCH="ai-post/$(date +%Y%m%d)-${{ github.run_id }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+          git add "${{ steps.gen.outputs.post_path }}"
+          git commit -m "post(ai): ${{ steps.gen.outputs.post_title }}"
+          git push -u origin "$BRANCH"
+          gh label create "ai-generated" --color "4F46E5" --description "AI generated blog draft" --force || true
+          gh pr create \
+            --title "🤖 AI 草稿: ${{ steps.gen.outputs.post_title }}" \
+            --body "由 \`AI Auto Post PR\` 工作流自动生成（\`source: \"ai\"\`）。请审核正文事实与边界描述后合并发布：\`${{ steps.gen.outputs.post_path }}\`。" \
+            --label "ai-generated" \
+            --base main \
+            --head "$BRANCH"

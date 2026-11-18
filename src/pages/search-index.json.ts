@@ -7,6 +7,7 @@ export const GET: APIRoute = async () => {
     slug: getPostSlug(post),
     title: post.data.title,
     date: formatDate(post.data.date),
+    source: post.data.source,
     tags: post.data.tags,
     summary: post.data.summary ?? extractExcerpt(post.body, 140),
     content: (post.body ?? '')

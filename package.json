@@ -8,7 +8,8 @@
     "build": "astro build",
     "preview": "astro preview",
     "check": "astro check",
-    "new": "node scripts/new-post.mjs"
+    "new": "node scripts/new-post.mjs",
+    "ai-post": "node scripts/generate-ai-post.mjs"
   },
   "dependencies": {
     "@astrojs/rss": "^4.0.11",

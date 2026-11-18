@@ -1,7 +1,7 @@
 ---
 import { render } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
-import { SITE } from '../../config';
+import { GISCUS, SITE } from '../../config';
 import {
   type BlogPost,
   estimateReadingTime,
@@ -9,6 +9,8 @@ import {
   formatDate,
   getPostSlug,
   getPublishedPosts,
+  getRelatedPosts,
+  getSourceMeta,
 } from '../../utils/posts';
 
 export async function getStaticPaths() {
@@ -19,6 +21,7 @@ export async function getStaticPaths() {
       post,
       nextPost: index > 0 ? posts[index - 1] : null,
       prevPost: index < posts.length - 1 ? posts[index + 1] : null,
+      relatedPosts: getRelatedPosts(post, posts, 3),
     },
   }));
 }
@@ -27,13 +30,15 @@ interface Props {
   post: BlogPost;
   prevPost: BlogPost | null;
   nextPost: BlogPost | null;
+  relatedPosts: BlogPost[];
 }
 
-const { post, prevPost, nextPost } = Astro.props;
+const { post, prevPost, nextPost, relatedPosts } = Astro.props;
 const { Content, headings } = await render(post);
 const tocHeadings = headings.filter((h) => h.depth >= 2 && h.depth <= 4);
 const { minutes, words } = estimateReadingTime(post.body);
 const description = post.data.summary ?? extractExcerpt(post.body);
+const sourceMeta = getSourceMeta(post.data.source);
 const sourcePath = post.filePath
   ? post.filePath.replace(/^.*?src\/content\/posts\//, 'src/content/posts/')
   : `src/content/posts/${post.id}`;
@@ -46,6 +51,8 @@ const editUrl = `${SITE.repo}/blob/main/${sourcePath}`;
   <article>
     <header class="article-header">
       <div class="post-meta">
+        <span class={sourceMeta.className} title={sourceMeta.description}>{sourceMeta.label}</span>
+        <span>·</span>
         <time datetime={post.data.date.toISOString()}>{formatDate(post.data.date)}</time>
         {post.data.updated && (
           <>
@@ -55,17 +62,35 @@ const editUrl = `${SITE.repo}/blob/main/${sourcePath}`;
         )}
         <span>·</span>
         <span>约 {words} 字 / {minutes} 分钟</span>
+        {post.data.aiModel && (
+          <>
+            <span>·</span>
+            <span>模型：{post.data.aiModel}</span>
+          </>
+        )}
       </div>
 
       <h1>{post.data.title}</h1>
 
-      {post.data.tags.length > 0 && (
-        <div class="tag-row">
-          {post.data.tags.map((tag) => (
-            <a class="tag-pill" href={`/tags/${encodeURIComponent(tag)}/`}>#{tag}</a>
-          ))}
+      <div class="reader-toolbar">
+        {post.data.tags.length > 0 ? (
+          <div class="tag-row" style="margin-top:0;">
+            {post.data.tags.map((tag) => (
+              <a class="tag-pill" href={`/tags/${encodeURIComponent(tag)}/`}>#{tag}</a>
+            ))}
+          </div>
+        ) : <div />}
+
+        <div class="reader-controls" aria-label="阅读偏好设置">
+          <span>字号</span>
+          <button type="button" class="reader-btn" data-font="sm">小</button>
+          <button type="button" class="reader-btn active" data-font="md">默认</button>
+          <button type="button" class="reader-btn" data-font="lg">大</button>
+          <span style="margin-left:0.35rem;">版式</span>
+          <button type="button" class="reader-btn active" data-width="normal">标准</button>
+          <button type="button" class="reader-btn" data-width="wide">宽栏</button>
         </div>
-      )}
+      </div>
     </header>
 
     {tocHeadings.length >= 2 && (
@@ -81,9 +106,23 @@ const editUrl = `${SITE.repo}/blob/main/${sourcePath}`;
       </details>
     )}
 
-    <div class="article-shell">
+    <div id="article-shell" class="article-shell">
       <div class="article-main">
-        <div class="prose">
+        {post.data.source === 'ai' && (
+          <div class="prose">
+            <div class="callout callout-note" style="margin-top:0;">
+              <div class="callout-title">AI Generated Note</div>
+              <p>
+                本文由自动化工作流基于公开仓库记录整理生成，并经人工审核发布。
+                {post.data.aiRepo && (
+                  <> 关联仓库：<a href={`https://github.com/${post.data.aiRepo}`} target="_blank" rel="noopener noreferrer">{post.data.aiRepo}</a>。</>
+                )}
+              </p>
+            </div>
+          </div>
+        )}
+
+        <div id="article-prose" class="prose">
           <Content />
         </div>
 
@@ -111,6 +150,30 @@ const editUrl = `${SITE.repo}/blob/main/${sourcePath}`;
             </div>
           </nav>
         )}
+
+        {relatedPosts.length > 0 && (
+          <section class="related-section" aria-label="关联文章推荐">
+            <h2>相关文章</h2>
+            <div class="related-grid">
+              {relatedPosts.map((rel) => {
+                const relMeta = getSourceMeta(rel.data.source);
+                return (
+                  <a class="related-card" href={`/posts/${getPostSlug(rel)}/`}>
+                    <span class="related-card-meta">
+                      {formatDate(rel.data.date)} · {relMeta.shortLabel}
+                    </span>
+                    <span class="related-card-title">{rel.data.title}</span>
+                  </a>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
+        <section class="comments-section" aria-label="评论区">
+          <h2>评论交流</h2>
+          <div id="giscus-container"></div>
+        </section>
       </div>
 
       {tocHeadings.length >= 2 && (
@@ -128,9 +191,38 @@ const editUrl = `${SITE.repo}/blob/main/${sourcePath}`;
     </div>
   </article>
 
-  <script is:inline>
+  <script is:inline define:vars={{ giscus: GISCUS }}>
     (() => {
-      // 1. IDE-style code block frame with language label + Copy button
+      // 1. Reader font-size & width preferences
+      const prose = document.getElementById('article-prose');
+      const shell = document.getElementById('article-shell');
+      const fontBtns = document.querySelectorAll('.reader-btn[data-font]');
+      const widthBtns = document.querySelectorAll('.reader-btn[data-width]');
+
+      function applyReaderPrefs() {
+        const font = localStorage.getItem('reader-font') || 'md';
+        const width = localStorage.getItem('reader-width') || 'normal';
+        if (prose) prose.setAttribute('data-font-size', font);
+        if (shell) shell.classList.toggle('wide-prose', width === 'wide');
+        fontBtns.forEach((b) => b.classList.toggle('active', b.getAttribute('data-font') === font));
+        widthBtns.forEach((b) => b.classList.toggle('active', b.getAttribute('data-width') === width));
+      }
+      applyReaderPrefs();
+
+      fontBtns.forEach((btn) => {
+        btn.addEventListener('click', () => {
+          localStorage.setItem('reader-font', btn.getAttribute('data-font') || 'md');
+          applyReaderPrefs();
+        });
+      });
+      widthBtns.forEach((btn) => {
+        btn.addEventListener('click', () => {
+          localStorage.setItem('reader-width', btn.getAttribute('data-width') || 'normal');
+          applyReaderPrefs();
+        });
+      });
+
+      // 2. IDE-style code block frame with language label + Copy button
       const blocks = document.querySelectorAll('.prose pre.astro-code');
       for (const pre of blocks) {
         if (pre.closest('.code-frame')) continue;
@@ -170,7 +262,7 @@ const editUrl = `${SITE.repo}/blob/main/${sourcePath}`;
         frame.appendChild(pre);
       }
 
-      // 2. Transform GitHub-style Callouts: > [!NOTE] ...
+      // 3. Transform GitHub-style Callouts: > [!NOTE] ...
       const calloutLabels = {
         note: 'Note',
         tip: 'Tip',
@@ -202,7 +294,7 @@ const editUrl = `${SITE.repo}/blob/main/${sourcePath}`;
         bq.replaceWith(callout);
       });
 
-      // 3. Reading progress bar
+      // 4. Reading progress bar
       const progressBar = document.getElementById('reading-progress');
       const updateProgress = () => {
         if (!progressBar) return;
@@ -214,7 +306,7 @@ const editUrl = `${SITE.repo}/blob/main/${sourcePath}`;
       window.addEventListener('scroll', updateProgress, { passive: true });
       updateProgress();
 
-      // 4. Sticky TOC scrollspy
+      // 5. Sticky TOC scrollspy
       const tocLinks = Array.from(document.querySelectorAll('.toc-rail a[data-toc-link]'));
       if (tocLinks.length > 0 && 'IntersectionObserver' in window) {
         const headingEls = tocLinks
@@ -242,7 +334,7 @@ const editUrl = `${SITE.repo}/blob/main/${sourcePath}`;
         if (headingEls[0]) setActive(headingEls[0].id);
       }
 
-      // 5. Image click-to-zoom lightbox
+      // 6. Image click-to-zoom lightbox
       document.querySelectorAll('.prose img').forEach((img) => {
         img.addEventListener('click', () => {
           const overlay = document.createElement('div');
@@ -257,6 +349,46 @@ const editUrl = `${SITE.repo}/blob/main/${sourcePath}`;
           document.body.appendChild(overlay);
         });
       });
+
+      // 7. Giscus comments synced with theme
+      const giscusWrap = document.getElementById('giscus-container');
+      if (giscusWrap) {
+        const getGiscusTheme = () =>
+          document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light';
+
+        const script = document.createElement('script');
+        script.src = 'https://giscus.app/client.js';
+        script.async = true;
+        script.crossOrigin = 'anonymous';
+        script.setAttribute('data-repo', giscus.repo);
+        script.setAttribute('data-repo-id', giscus.repoId);
+        script.setAttribute('data-category', giscus.category);
+        script.setAttribute('data-category-id', giscus.categoryId);
+        script.setAttribute('data-mapping', giscus.mapping);
+        script.setAttribute('data-strict', '0');
+        script.setAttribute('data-reactions-enabled', '1');
+        script.setAttribute('data-emit-metadata', '0');
+        script.setAttribute('data-input-position', 'top');
+        script.setAttribute('data-theme', getGiscusTheme());
+        script.setAttribute('data-lang', giscus.lang);
+        script.setAttribute('data-loading', 'lazy');
+        giscusWrap.appendChild(script);
+
+        const themeBtn = document.getElementById('theme-toggle');
+        if (themeBtn) {
+          themeBtn.addEventListener('click', () => {
+            requestAnimationFrame(() => {
+              const iframe = document.querySelector('iframe.giscus-frame');
+              if (iframe instanceof HTMLIFrameElement && iframe.contentWindow) {
+                iframe.contentWindow.postMessage(
+                  { giscus: { setConfig: { theme: getGiscusTheme() } } },
+                  'https://giscus.app'
+                );
+              }
+            });
+          });
+        }
+      }
     })();
   </script>
 </BaseLayout>

@@ -4,6 +4,8 @@ import PostCard from '../../components/PostCard.astro';
 import { getAllTags, getPublishedPosts } from '../../utils/posts';
 
 const posts = await getPublishedPosts();
+const manualCount = posts.filter((p) => p.data.source === 'manual').length;
+const aiCount = posts.filter((p) => p.data.source === 'ai').length;
 const tags = getAllTags(posts);
 
 const grouped = new Map<number, typeof posts>();
@@ -16,13 +18,20 @@ for (const post of posts) {
 const years = Array.from(grouped.entries()).sort((a, b) => b[0] - a[0]);
 ---
 
-<BaseLayout title="文章归档" description="所有已发布的博客文章与技术笔记归档。">
+<BaseLayout title="文章归档" description="所有已发布的博客文章与技术笔记归档（支持按手写/AI来源与标签筛选）。">
   <div class="article-header">
     <p class="hero-kicker">ARCHIVE · {posts.length} POSTS</p>
     <h1>文章归档</h1>
+
+    <div id="archive-source-filters" class="source-filter-row" role="tablist" aria-label="按文章来源筛选">
+      <button type="button" class="filter-tab active" data-source="all">全部 ({posts.length})</button>
+      <button type="button" class="filter-tab" data-source="manual">手写原创 ({manualCount})</button>
+      <button type="button" class="filter-tab" data-source="ai">AI 生成 ({aiCount})</button>
+    </div>
+
     {tags.length > 0 && (
-      <div id="archive-tag-filters" class="tag-row" style="margin-top:0.85rem;">
-        <button type="button" class="tag-pill active" data-tag="all">全部 ({posts.length})</button>
+      <div id="archive-tag-filters" class="tag-row" style="margin-top:0.75rem;">
+        <button type="button" class="tag-pill active" data-tag="all">全部标签</button>
         {tags.map(({ tag, count }) => (
           <button type="button" class="tag-pill" data-tag={tag}>
             #{tag} ({count})
@@ -50,25 +59,23 @@ const years = Array.from(grouped.entries()).sort((a, b) => b[0] - a[0]);
 
   <script is:inline>
     (() => {
-      const filterWrap = document.getElementById('archive-tag-filters');
+      const sourceWrap = document.getElementById('archive-source-filters');
+      const tagWrap = document.getElementById('archive-tag-filters');
       const yearGroups = document.querySelectorAll('.archive-year-group');
-      if (!filterWrap) return;
 
-      filterWrap.addEventListener('click', (e) => {
-        const btn = e.target instanceof Element ? e.target.closest('button[data-tag]') : null;
-        if (!btn) return;
-        const selected = btn.getAttribute('data-tag') || 'all';
+      let activeSource = 'all';
+      let activeTag = 'all';
 
-        filterWrap.querySelectorAll('button[data-tag]').forEach((b) => {
-          b.classList.toggle('active', b === btn);
-        });
-
+      function applyFilters() {
         yearGroups.forEach((group) => {
           const rows = group.querySelectorAll('.timeline-row');
           let visibleCount = 0;
           rows.forEach((row) => {
+            const src = row.getAttribute('data-source') || 'manual';
             const tags = (row.getAttribute('data-tags') || '').split(',').filter(Boolean);
-            const show = selected === 'all' || tags.includes(selected);
+            const matchSource = activeSource === 'all' || src === activeSource;
+            const matchTag = activeTag === 'all' || tags.includes(activeTag);
+            const show = matchSource && matchTag;
             row.style.display = show ? '' : 'none';
             if (show) visibleCount += 1;
           });
@@ -76,7 +83,27 @@ const years = Array.from(grouped.entries()).sort((a, b) => b[0] - a[0]);
           const countEl = group.querySelector('.year-count');
           if (countEl) countEl.textContent = `${visibleCount} 篇`;
         });
-      });
+      }
+
+      if (sourceWrap) {
+        sourceWrap.addEventListener('click', (e) => {
+          const btn = e.target instanceof Element ? e.target.closest('button[data-source]') : null;
+          if (!btn) return;
+          activeSource = btn.getAttribute('data-source') || 'all';
+          sourceWrap.querySelectorAll('button[data-source]').forEach((b) => b.classList.toggle('active', b === btn));
+          applyFilters();
+        });
+      }
+
+      if (tagWrap) {
+        tagWrap.addEventListener('click', (e) => {
+          const btn = e.target instanceof Element ? e.target.closest('button[data-tag]') : null;
+          if (!btn) return;
+          activeTag = btn.getAttribute('data-tag') || 'all';
+          tagWrap.querySelectorAll('button[data-tag]').forEach((b) => b.classList.toggle('active', b === btn));
+          applyFilters();
+        });
+      }
     })();
   </script>
 </BaseLayout>

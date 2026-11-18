@@ -140,7 +140,8 @@ const serializedProjects = PROJECTS.map((p) => ({
       const matchedPosts = posts
         .filter((doc) => {
           if (!terms.length) return true;
-          const hay = `${doc.title}\n${(doc.tags || []).join(' ')}\n${doc.summary}\n${doc.content}`.toLowerCase();
+          const srcHint = doc.source === 'ai' ? 'ai 自动 生成' : 'manual 手写 原创';
+          const hay = `${doc.title}\n${srcHint}\n${(doc.tags || []).join(' ')}\n${doc.summary}\n${doc.content}`.toLowerCase();
           return terms.every((t) => hay.includes(t));
         })
         .slice(0, terms.length ? 6 : 4)
@@ -148,7 +149,7 @@ const serializedProjects = PROJECTS.map((p) => ({
           type: 'post',
           title: doc.title,
           subtitle: extractSnippet(doc, terms),
-          badge: doc.date,
+          badge: `${doc.source === 'ai' ? 'AI' : '手写'} · ${doc.date}`,
           url: `/posts/${encodeURIComponent(doc.slug)}/`,
         }));
 

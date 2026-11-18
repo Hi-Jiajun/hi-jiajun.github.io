@@ -3,6 +3,7 @@ title: "小米 15S Pro (XRING O1) 内核设备树与外部模块 KMI/CRC 契约�
 date: 2026-11-17T22:00:00+08:00
 summary: "记录 dijun-kernel-devicetree 仓库的设计脉络：四套严格分层的 DTS 基线、增量 .dtso 补丁，以及锁定 6.18.32-4k VERMAGIC 与 module_layout CRC 0x60801db3 的外部模块 SDK。"
 tags: ["XRING-O1", "Android-Kernel", "DeviceTree"]
+source: "ai"
 draft: false
 ---
 

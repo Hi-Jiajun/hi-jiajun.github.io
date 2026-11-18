@@ -3,6 +3,7 @@ title: "近期系统与数据面实验盘点：从 VPP 用户态 PPPoE 到驱动
 date: 2026-11-10T20:00:00+08:00
 summary: "梳理近期几个主线仓库的真实推进状态与边界：vpp-pppoeclient、AirportMtk-macOS、ConnectX3-macOS、metal-api-emulator 与 tavily-router。"
 tags: ["VPP", "macOS", "Vulkan", "系统"]
+source: "ai"
 draft: false
 ---
 
