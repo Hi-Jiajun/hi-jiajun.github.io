@@ -5,17 +5,22 @@ import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const postsDir = path.resolve(__dirname, '../src/content/posts');
+const rootDir = path.resolve(__dirname, '..');
+const postsDir = path.join(rootDir, 'src/content/posts');
+const usagePath = path.join(rootDir, '.github/ai-usage.json');
 
 const OWNER = process.env.GITHUB_OWNER || 'Hi-Jiajun';
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN || process.env.GH_TOKEN || '';
 const LLM_API_KEY = process.env.LLM_API_KEY || '';
 const LLM_BASE_URL = (process.env.LLM_BASE_URL || 'https://api.openai.com/v1').replace(/\/+$/, '');
 const LLM_MODEL = process.env.LLM_MODEL || 'gpt-4o-mini';
+const MONTHLY_CAP_RMB = Number(process.env.LLM_MONTHLY_CAP_RMB || 10);
+const OFFPEAK_ONLY = String(process.env.LLM_OFFPEAK_ONLY || 'true').toLowerCase() !== 'false';
 
 const args = process.argv.slice(2);
 const dryRun = args.includes('--dry-run');
 const skipIfNoKey = args.includes('--skip-if-no-key');
+const allowPeak = args.includes('--allow-peak') || String(process.env.AI_ALLOW_PEAK || 'false').toLowerCase() === 'true';
 
 function getArg(flag) {
   const idx = args.indexOf(flag);
@@ -37,21 +42,78 @@ if (args.includes('-h') || args.includes('--help')) {
   console.log('  pnpm ai-post --mode weekly-digest [--days 7]');
   console.log('  pnpm ai-post --mode repo-deep-dive --repo vpp-pppoeclient');
   console.log('  pnpm ai-post --mode topic-note --topic "VPP 节点调度" [--notes "..."]');
-  console.log('环境变量:');
-  console.log('  LLM_API_KEY     OpenAI 兼容 API Key（必填）');
-  console.log('  LLM_BASE_URL    默认 https://api.openai.com/v1（可改为 DeepSeek 等）');
-  console.log('  LLM_MODEL       默认 gpt-4o-mini');
+  console.log('可选参数:');
+  console.log('  --allow-peak    允许在高峰时段运行（默认仅在 DeepSeek 谷价时段执行）');
+  console.log('  --dry-run       仅预览，不写入文件');
   process.exit(0);
 }
 
-if (!LLM_API_KEY) {
-  const msg = '未检测到 LLM_API_KEY 环境变量（可在仓库 Settings -> Secrets -> Actions 配置）。';
-  if (skipIfNoKey) {
-    console.log(`[skip] ${msg} 本次跳过 AI 生成。`);
-    process.exit(0);
+/**
+ * DeepSeek 官方错峰优惠（谷价）时段（北京时间 Asia/Shanghai）：
+ * - 周六、周日全天
+ * - 工作日 18:00–次日 09:00 以及 12:00–14:00
+ * 高峰时段：工作日 09:00–12:00 与 14:00–18:00
+ */
+export function isDeepSeekOffPeak(date = new Date()) {
+  const cst = new Date(date.toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }));
+  const day = cst.getDay(); // 0=Sun, 6=Sat
+  const hour = cst.getHours();
+  if (day === 0 || day === 6) return true;
+  if (hour < 9 || (hour >= 12 && hour < 14) || hour >= 18) return true;
+  return false;
+}
+
+function getCurrentCstMonth(date = new Date()) {
+  const cst = new Date(date.toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }));
+  const y = cst.getFullYear();
+  const m = String(cst.getMonth() + 1).padStart(2, '0');
+  return `${y}-${m}`;
+}
+
+function loadMonthlyUsage() {
+  const currentMonth = getCurrentCstMonth();
+  if (!fs.existsSync(usagePath)) {
+    return { month: currentMonth, spentRmb: 0, calls: 0, lastUpdated: null };
   }
-  console.error(`错误: ${msg}`);
-  process.exit(1);
+  const data = JSON.parse(fs.readFileSync(usagePath, 'utf8'));
+  if (data.month !== currentMonth) {
+    return { month: currentMonth, spentRmb: 0, calls: 0, lastUpdated: null };
+  }
+  return {
+    month: currentMonth,
+    spentRmb: Number(data.spentRmb || 0),
+    calls: Number(data.calls || 0),
+    lastUpdated: data.lastUpdated || null,
+  };
+}
+
+function estimateCostRmb(usage, offPeak) {
+  if (!usage) return 0.01;
+  const cachedIn = Number(usage.prompt_cache_hit_tokens || 0);
+  const totalIn = Number(usage.prompt_tokens || 0);
+  const missIn = Math.max(0, totalIn - cachedIn);
+  const out = Number(usage.completion_tokens || 0);
+  // Conservative upper-bound estimate based on DeepSeek Flash/Chat off-peak vs peak rates (RMB per 1M tokens)
+  const mult = offPeak ? 1 : 2;
+  const cost = (cachedIn * 0.02 * mult + missIn * 1.0 * mult + out * 4.0 * mult) / 1_000_000;
+  return Number(Math.max(cost, 0.0001).toFixed(6));
+}
+
+async function checkDeepSeekBalance() {
+  if (!LLM_BASE_URL.includes('deepseek.com')) return;
+  const rootApi = LLM_BASE_URL.replace(/\/v1$/, '');
+  try {
+    const res = await fetch(`${rootApi}/user/balance`, {
+      headers: { Authorization: `Bearer ${LLM_API_KEY}` },
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    if (data && data.is_available === false) {
+      throw new Error('DeepSeek 账户当前不可用或余额不足');
+    }
+  } catch (err) {
+    console.warn(`[warn] 余额预检跳过: ${err.message}`);
+  }
 }
 
 async function ghFetch(endpoint) {
@@ -74,9 +136,7 @@ async function gatherWeeklyContext() {
     .filter((r) => !r.fork && !r.private && r.name !== 'hi-jiajun.github.io' && new Date(r.pushed_at) >= since)
     .slice(0, 5);
 
-  if (active.length === 0) {
-    return null;
-  }
+  if (active.length === 0) return null;
 
   const summaries = [];
   for (const repo of active) {
@@ -152,6 +212,7 @@ async function callLlm(userPrompt) {
     body: JSON.stringify({
       model: LLM_MODEL,
       temperature: 0.4,
+      max_tokens: 4000,
       response_format: { type: 'json_object' },
       messages: [
         { role: 'system', content: systemPrompt },
@@ -167,7 +228,10 @@ async function callLlm(userPrompt) {
   const data = await res.json();
   const raw = data.choices?.[0]?.message?.content || '';
   const cleaned = raw.replace(/^```json\s*/i, '').replace(/```\s*$/, '').trim();
-  return JSON.parse(cleaned);
+  return {
+    parsed: JSON.parse(cleaned),
+    usage: data.usage || null,
+  };
 }
 
 function formatLocalIso(d) {
@@ -183,6 +247,30 @@ function formatLocalIso(d) {
 }
 
 async function main() {
+  if (!LLM_API_KEY) {
+    const msg = '未检测到 LLM_API_KEY 环境变量（可在仓库 Settings -> Secrets -> Actions 配置）。';
+    if (skipIfNoKey) {
+      console.log(`[skip] ${msg} 本次跳过 AI 生成。`);
+      return;
+    }
+    throw new Error(msg);
+  }
+
+  const now = new Date();
+  const offPeak = isDeepSeekOffPeak(now);
+  if (OFFPEAK_ONLY && !allowPeak && !offPeak) {
+    console.log('[skip] 当前处于 DeepSeek 高峰时段（工作日 09:00-12:00 / 14:00-18:00），已按配置跳过调用以保证谷价执行。');
+    return;
+  }
+
+  const usageState = loadMonthlyUsage();
+  if (usageState.spentRmb >= MONTHLY_CAP_RMB) {
+    console.log(`[skip] 本月 (${usageState.month}) 累计用量 ¥${usageState.spentRmb.toFixed(4)} 已达到上限 ¥${MONTHLY_CAP_RMB}，停止调用。`);
+    return;
+  }
+
+  await checkDeepSeekBalance();
+
   let ctx = null;
   if (mode === 'weekly-digest') ctx = await gatherWeeklyContext();
   else if (mode === 'repo-deep-dive') ctx = await gatherRepoContext(targetRepo);
@@ -191,11 +279,16 @@ async function main() {
 
   if (!ctx) {
     console.log(`[skip] 最近 ${days} 天没有新的公开仓库推送，跳过生成。`);
-    process.exit(0);
+    return;
   }
 
-  const generated = await callLlm(ctx.promptContext);
-  const { datePart, iso } = formatLocalIso(new Date());
+  const { parsed: generated, usage } = await callLlm(ctx.promptContext);
+  const callCost = estimateCostRmb(usage, offPeak);
+  usageState.spentRmb = Number((usageState.spentRmb + callCost).toFixed(6));
+  usageState.calls += 1;
+  usageState.lastUpdated = now.toISOString();
+
+  const { datePart, iso } = formatLocalIso(now);
   const safeSlug = String(generated.slug || `ai-${mode}`)
     .toLowerCase()
     .replace(/[^a-z0-9-]+/g, '-')
@@ -226,13 +319,15 @@ ${String(generated.body || '').trim()}
 
   if (dryRun) {
     console.log(`[dry-run] 目标文件: ${filePath}`);
+    console.log(`[dry-run] 本次估算费用: ¥${callCost} | 月累计: ¥${usageState.spentRmb}/${MONTHLY_CAP_RMB}`);
     console.log(md);
     return;
   }
 
   fs.mkdirSync(postsDir, { recursive: true });
   fs.writeFileSync(filePath, md, 'utf8');
-  console.log(`已生成 AI 文章: ${path.relative(process.cwd(), filePath)}`);
+  fs.writeFileSync(usagePath, JSON.stringify(usageState, null, 2) + '\n', 'utf8');
+  console.log(`已生成 AI 文章: ${path.relative(process.cwd(), filePath)} (本次约 ¥${callCost}, 本月累计 ¥${usageState.spentRmb}/${MONTHLY_CAP_RMB})`);
 
   if (process.env.GITHUB_OUTPUT) {
     fs.appendFileSync(process.env.GITHUB_OUTPUT, `post_path=${path.relative(process.cwd(), filePath)}\n`);

@@ -2,7 +2,7 @@ name: AI Auto Post PR
 
 on:
   schedule:
-    - cron: "0 1 * * 1" # Every Monday 09:00 Asia/Shanghai
+    - cron: "0 19 * * 0" # Sunday 19:00 UTC = Monday 03:00 Asia/Shanghai (DeepSeek off-peak)
   workflow_dispatch:
     inputs:
       mode:
@@ -30,6 +30,11 @@ on:
         description: "扫描最近几天的提交（weekly-digest 用）"
         required: false
         default: "7"
+      allow_peak:
+        description: "是否允许在非谷价时段强行运行（默认仅谷价执行）"
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: write
@@ -54,11 +59,14 @@ jobs:
           LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
           LLM_BASE_URL: ${{ vars.LLM_BASE_URL }}
           LLM_MODEL: ${{ vars.LLM_MODEL }}
+          LLM_MONTHLY_CAP_RMB: ${{ vars.LLM_MONTHLY_CAP_RMB }}
+          LLM_OFFPEAK_ONLY: ${{ vars.LLM_OFFPEAK_ONLY }}
           AI_MODE: ${{ inputs.mode || 'weekly-digest' }}
           AI_TARGET_REPO: ${{ inputs.target_repo || '' }}
           AI_TOPIC: ${{ inputs.topic || '' }}
           AI_NOTES: ${{ inputs.notes || '' }}
           AI_DAYS: ${{ inputs.days || '7' }}
+          AI_ALLOW_PEAK: ${{ inputs.allow_peak || false }}
         run: node scripts/generate-ai-post.mjs --skip-if-no-key
 
       - name: Create Pull Request for review
@@ -70,13 +78,13 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout -b "$BRANCH"
-          git add "${{ steps.gen.outputs.post_path }}"
+          git add "${{ steps.gen.outputs.post_path }}" .github/ai-usage.json
           git commit -m "post(ai): ${{ steps.gen.outputs.post_title }}"
           git push -u origin "$BRANCH"
           gh label create "ai-generated" --color "4F46E5" --description "AI generated blog draft" --force || true
           gh pr create \
             --title "🤖 AI 草稿: ${{ steps.gen.outputs.post_title }}" \
-            --body "由 \`AI Auto Post PR\` 工作流自动生成（\`source: \"ai\"\`）。请审核正文事实与边界描述后合并发布：\`${{ steps.gen.outputs.post_path }}\`。" \
+            --body "由 \`AI Auto Post PR\` 工作流在 DeepSeek 谷价/预算守卫下自动生成（\`source: \"ai\"\`）。请审核正文事实与边界描述后合并发布：\`${{ steps.gen.outputs.post_path }}\`。" \
             --label "ai-generated" \
             --base main \
             --head "$BRANCH"
